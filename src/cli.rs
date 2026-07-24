@@ -100,8 +100,8 @@ pub enum Command {
         /// Replace `KEY=VALUE` placeholders for this run only.
         #[arg(short = 'v', long = "var", value_name = "KEY=VALUE")]
         vars: Vec<String>,
-        /// Don't actually execute; print the resolved command instead.
-        #[arg(long)]
+        /// Don't execute; print the fully substituted command instead.
+        #[arg(long, visible_alias = "expand")]
         dry_run: bool,
     },
 
@@ -478,7 +478,8 @@ engagement_cli!(
     pub id: String,
     #[arg(short = 'v', long = "var", value_name = "KEY=VALUE")]
     pub vars: Vec<String>,
-    #[arg(long)]
+    /// Don't execute; print the fully substituted command instead.
+    #[arg(long, visible_alias = "expand")]
     pub dry_run: bool,
 );
 
