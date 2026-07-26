@@ -13,7 +13,6 @@
 use crate::exec::ssh::{shell_escape, SshDeploySession};
 use anyhow::{Context, Result, bail};
 use clap::Args;
-use std::io::Write;
 use std::path::{Path, PathBuf};
 
 #[derive(Args, Debug, Clone)]
@@ -71,7 +70,7 @@ pub fn run(args: DeployArgs) -> Result<()> {
 
     println!("[chronosphere] deploying {} → {}:{}", binary.display(), host_spec.display, args.remote_path);
 
-    let remote_tmp = "/tmp/chronosphere.deploy";
+    let remote_tmp = format!("/tmp/chronosphere.deploy.{}", uuid::Uuid::new_v4());
 
     if args.dry_run {
         println!("[dry-run] scp {} :{}", binary.display(), remote_tmp);
@@ -87,7 +86,7 @@ pub fn run(args: DeployArgs) -> Result<()> {
     ssh.run_scp(&binary, &format!("{}:{}", host_spec.target, remote_tmp))?;
 
     // 2) install into remote_path (with sudo if asked) + chmod +x
-    let install_cmd = build_install_cmd(remote_tmp, &args.remote_path, args.sudo);
+    let install_cmd = build_install_cmd(&remote_tmp, &args.remote_path, args.sudo);
     ssh.run_ssh(&host_spec.target, &install_cmd)?;
 
     // 3) extract embedded templates (so the remote has the command library)
@@ -207,13 +206,7 @@ fn ensure_sshpass() -> Result<()> {
 }
 
 fn prompt_password(prompt: &str) -> Result<String> {
-    use std::io::{self, BufRead};
-    eprint!("{}", prompt);
-    io::stderr().flush().ok();
-    // Best-effort: turn off echo if we're on a TTY. Fall back to plain readline.
-    let mut buf = String::new();
-    io::stdin().lock().read_line(&mut buf).context("read password")?;
-    Ok(buf.trim_end_matches(&['\n', '\r'][..]).to_string())
+    rpassword::prompt_password(prompt).context("read password")
 }
 
 fn deploy_session(args: &DeployArgs, auth: &Auth) -> SshDeploySession {

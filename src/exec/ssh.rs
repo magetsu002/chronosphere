@@ -180,11 +180,11 @@ impl SshConn {
 
     fn wrap_prog(&self, prog: &str, args: &[String]) -> String {
         let mut cmd = String::new();
-        if let Some(pw) = &self.password {
-            cmd.push_str("sshpass -p ");
-            cmd.push_str(&shell_escape(pw));
-            cmd.push(' ');
-        }
+if let Some(password) = &self.password {
+    cmd.push_str("SSHPASS=");
+    cmd.push_str(&shell_escape(password));
+    cmd.push_str(" sshpass -e ");
+}
         cmd.push_str(prog);
         for a in args {
             cmd.push(' ');
@@ -230,14 +230,11 @@ impl SshConn {
         let remote_exec = shell_escape(&format!(
             "chmod +x {remote_script} && bash {remote_script}; ec=$?; rm -f {remote_script}; exit $ec"
         ));
-        let mut ssh_cmd = if self.password.is_some() {
-            format!(
-                "sshpass -p {} ssh",
-                shell_escape(self.password.as_ref().unwrap())
-            )
-        } else {
-            "ssh".into()
-        };
+let mut ssh_cmd = if let Some(password) = &self.password {
+    format!("SSHPASS={} sshpass -e ssh", shell_escape(password))
+} else {
+    "ssh".into()
+};
         if interactive {
             ssh_cmd.push_str(" -tt");
         }
@@ -329,29 +326,45 @@ impl SshDeploySession {
         Ok(())
     }
 
+    fn port_flag(prog: &str) -> &'static str {
+        if prog == "scp" { "-P" } else { "-p" }
+    }
+
     fn base_cmd(&self, prog: &str) -> Command {
-        let mut cmd = if let Some(pw) = &self.password {
-            let mut c = Command::new("sshpass");
-            c.arg("-p").arg(pw).arg(prog);
-            c
+        let mut command = if let Some(password) = &self.password {
+            let mut command = Command::new("sshpass");
+            command.arg("-e").arg(prog);
+            command.env("SSHPASS", password);
+            command
         } else {
             Command::new(prog)
         };
-        cmd.arg("-P").arg(self.port.to_string());
-        cmd.arg("-o").arg("StrictHostKeyChecking=accept-new");
-        if let Some(id) = &self.identity {
-            cmd.arg("-i").arg(id);
+        command
+            .arg(Self::port_flag(prog))
+            .arg(self.port.to_string());
+        command
+            .arg("-o")
+            .arg("StrictHostKeyChecking=accept-new");
+        if let Some(identity) = &self.identity {
+            command.arg("-i").arg(identity);
         }
-        cmd
+        command
     }
 }
 
 #[cfg(test)]
+
 mod tests {
     use super::*;
 
-    #[test]
-    fn remote_wrapper_contains_scp_and_ssh() {
+#[test]
+fn deploy_session_uses_protocol_specific_port_flags() {
+    assert_eq!(SshDeploySession::port_flag("ssh"), "-p");
+    assert_eq!(SshDeploySession::port_flag("scp"), "-P");
+}
+
+#[test]
+fn remote_wrapper_contains_scp_and_ssh() {
         let conn = SshConn {
             target: "user@10.0.0.5".into(),
             port: 22,
