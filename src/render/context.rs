@@ -74,11 +74,11 @@ impl RenderContext {
                 .and_then(|t| t.ip.clone().or_else(|| t.hostname.clone())),
             "ip" => self.target.as_ref().and_then(|t| t.ip.clone()),
             "hostname" => self.target.as_ref().and_then(|t| t.hostname.clone()),
-            /// Hostname-first address for HTTP URLs (e.g. sub1.target.htb); falls back to IP.
+            // Hostname-first address for HTTP URLs (e.g. sub1.target.htb); falls back to IP.
             "web_host" => self.web_host(),
             "web_base" => self.web_base(false),
             "web_base_https" => self.web_base(true),
-            /// Root domain for vhost/subdomain fuzz (e.g. target.htb). Override with -v vhost_root=...
+            // Root domain for vhost/subdomain fuzz (e.g. target.htb). Override with -v vhost_root=...
             "vhost_root" => self.vhost_root(),
             "dc" => self.target.as_ref().and_then(|t| t.dc_name.clone()),
             "dc_fqdn" => self.dc_fqdn(),
