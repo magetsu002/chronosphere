@@ -16,7 +16,6 @@ use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use tokio::fs;
 use tokio::process::Command;
 use tokio::sync::Mutex;
 
@@ -261,7 +260,8 @@ pub fn list_tools() -> Value {
                     "type": "object",
                     "properties": {
                         "job_id": {"type": "string"},
-                        "lines": {"type": "integer", "minimum": 1, "maximum": 5000, "default": 200}
+                        "lines": {"type": "integer", "minimum": 1, "maximum": 5000, "default": 200},
+                        "max_bytes": {"type": "integer", "minimum": 4096, "maximum": 67108864, "default": 1048576}
                     },
                     "required": ["job_id"],
                     "additionalProperties": false
@@ -275,7 +275,8 @@ pub fn list_tools() -> Value {
                     "properties": {
                         "job_id": {"type": "string"},
                         "pattern": {"type": "string"},
-                        "ignore_case": {"type": "boolean", "default": true}
+                        "ignore_case": {"type": "boolean", "default": true},
+                        "max_bytes": {"type": "integer", "minimum": 4096, "maximum": 268435456, "default": 67108864}
                     },
                     "required": ["job_id", "pattern"],
                     "additionalProperties": false
@@ -917,13 +918,19 @@ async fn terminate_child(child: &mut tokio::process::Child, identity: &RuntimeId
 struct TailArgs {
     job_id: String,
     lines: Option<usize>,
+    max_bytes: Option<u64>,
 }
 
 async fn tool_tail_job(args: Value, state: Arc<Mutex<State>>) -> Result<Value> {
     let args: TailArgs = serde_json::from_value(args).map_err(|err| anyhow!("{}", err))?;
     let lines_requested = args.lines.unwrap_or(200).clamp(1, 5000);
+    let max_bytes = args
+        .max_bytes
+        .unwrap_or(crate::log_io::DEFAULT_TAIL_BYTES)
+        .clamp(4096, 64 * 1024 * 1024);
     let (log_path, status, exit_code, secrets) = {
-        let state = state.lock().await;
+        let mut state = state.lock().await;
+        refresh_recovered_jobs(&mut state);
         let engagement = state
             .engagement
             .as_ref()
@@ -946,20 +953,32 @@ async fn tool_tail_job(args: Value, state: Arc<Mutex<State>>) -> Result<Value> {
             ),
         )
     };
-    let body = match log_path {
-        Some(path) if path.exists() => fs::read_to_string(&path).await.unwrap_or_default(),
-        _ => String::new(),
+    let output = match log_path {
+        Some(path) if path.exists() => {
+            crate::log_io::tail_lines(&path, lines_requested, max_bytes)?
+        }
+        _ => crate::log_io::TailOutput {
+            lines: Vec::new(),
+            total_lines: Some(0),
+            file_bytes: 0,
+            scanned_bytes: 0,
+            truncated: false,
+        },
     };
-    let body = crate::security::redact_values(&body, &secrets);
-    let lines: Vec<&str> = body.lines().collect();
-    let start = lines.len().saturating_sub(lines_requested);
-    let tail: Vec<String> = lines[start..].iter().map(|line| line.to_string()).collect();
+    let tail = output
+        .lines
+        .iter()
+        .map(|line| crate::security::redact_values(line, &secrets))
+        .collect::<Vec<_>>();
     Ok(json!({
         "job_id": args.job_id,
         "status": format!("{:?}", status).to_lowercase(),
         "exit_code": exit_code,
         "shown_lines": tail.len(),
-        "total_lines": lines.len(),
+        "total_lines": output.total_lines,
+        "file_bytes": output.file_bytes,
+        "scanned_bytes": output.scanned_bytes,
+        "truncated": output.truncated,
         "tail": tail.join("
     "),
     }))
@@ -970,18 +989,19 @@ struct GrepArgs {
     job_id: String,
     pattern: String,
     ignore_case: Option<bool>,
+    max_bytes: Option<u64>,
 }
 
 async fn tool_grep_job(args: Value, state: Arc<Mutex<State>>) -> Result<Value> {
     let args: GrepArgs = serde_json::from_value(args).map_err(|err| anyhow!("{}", err))?;
     let ignore_case = args.ignore_case.unwrap_or(true);
-    let needle = if ignore_case {
-        args.pattern.to_lowercase()
-    } else {
-        args.pattern.clone()
-    };
+    let max_bytes = args
+        .max_bytes
+        .unwrap_or(crate::log_io::DEFAULT_GREP_BYTES)
+        .clamp(4096, 256 * 1024 * 1024);
     let (log_path, secrets) = {
-        let state = state.lock().await;
+        let mut state = state.lock().await;
+        refresh_recovered_jobs(&mut state);
         let engagement = state
             .engagement
             .as_ref()
@@ -1003,23 +1023,24 @@ async fn tool_grep_job(args: Value, state: Arc<Mutex<State>>) -> Result<Value> {
             ),
         )
     };
-    let body = fs::read_to_string(&log_path).await.unwrap_or_default();
-    let body = crate::security::redact_values(&body, &secrets);
-    let mut matches = Vec::new();
-    for (index, line) in body.lines().enumerate() {
-        let haystack = if ignore_case {
-            line.to_lowercase()
-        } else {
-            line.to_string()
-        };
-        if haystack.contains(&needle) {
-            matches.push(json!({"line": index + 1, "text": line}));
-            if matches.len() >= 200 {
-                break;
-            }
-        }
-    }
-    Ok(json!({"matches": matches, "count": matches.len()}))
+    let output = crate::log_io::grep_lines(&log_path, &args.pattern, ignore_case, 200, max_bytes)?;
+    let matches = output
+        .matches
+        .into_iter()
+        .map(|entry| {
+            json!({
+                "line": entry.line,
+                "text": crate::security::redact_values(&entry.text, &secrets),
+                "line_truncated": entry.line_truncated,
+            })
+        })
+        .collect::<Vec<_>>();
+    Ok(json!({
+        "matches": matches,
+        "count": matches.len(),
+        "scanned_bytes": output.scanned_bytes,
+        "truncated": output.truncated,
+    }))
 }
 
 fn refresh_recovered_jobs(state: &mut State) {

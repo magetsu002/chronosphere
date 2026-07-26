@@ -10,6 +10,7 @@ mod exec;
 mod input;
 mod job_runtime;
 mod library;
+mod log_io;
 mod mcp;
 mod path_complete;
 mod render;
