@@ -4,6 +4,7 @@
 
 use super::protocol::McpError;
 use crate::engagement::{CredKind, CredentialProfile, Engagement, JobRecord, JobStatus, Target};
+use crate::job_runtime::{RunningProcess, RuntimeIdentity};
 use crate::library::CommandLibrary;
 use crate::render::{self, RenderContext};
 use crate::{builtin, config};
@@ -15,7 +16,6 @@ use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use tokio::fs;
 use tokio::process::Command;
 use tokio::sync::Mutex;
 
@@ -25,7 +25,7 @@ pub struct State {
     pub root: PathBuf,
     pub engagement: Option<Engagement>,
     pub library: CommandLibrary,
-    pub running_pids: HashMap<String, u32>,
+    pub running_jobs: HashMap<String, RunningProcess>,
 }
 
 impl State {
@@ -54,6 +54,16 @@ impl State {
                 }
             }
         };
+        let mut engagement = engagement;
+        let running_jobs = engagement
+            .as_mut()
+            .map(|engagement| {
+                crate::job_runtime::recover_running_map(
+                    &mut engagement.history,
+                    &Engagement::jobs_dir(&engagement.dir),
+                )
+            })
+            .unwrap_or_default();
         let lib_sources = library_sources(&root, engagement.as_ref());
         let paths: Vec<&Path> = lib_sources.iter().map(|p| p.as_path()).collect();
         let library = CommandLibrary::load(&paths).context("load library")?;
@@ -61,7 +71,7 @@ impl State {
             root,
             engagement,
             library,
-            running_pids: HashMap::new(),
+            running_jobs,
         })
     }
 
@@ -250,7 +260,8 @@ pub fn list_tools() -> Value {
                     "type": "object",
                     "properties": {
                         "job_id": {"type": "string"},
-                        "lines": {"type": "integer", "minimum": 1, "maximum": 5000, "default": 200}
+                        "lines": {"type": "integer", "minimum": 1, "maximum": 5000, "default": 200},
+                        "max_bytes": {"type": "integer", "minimum": 4096, "maximum": 67108864, "default": 1048576}
                     },
                     "required": ["job_id"],
                     "additionalProperties": false
@@ -264,7 +275,8 @@ pub fn list_tools() -> Value {
                     "properties": {
                         "job_id": {"type": "string"},
                         "pattern": {"type": "string"},
-                        "ignore_case": {"type": "boolean", "default": true}
+                        "ignore_case": {"type": "boolean", "default": true},
+                        "max_bytes": {"type": "integer", "minimum": 4096, "maximum": 268435456, "default": 67108864}
                     },
                     "required": ["job_id", "pattern"],
                     "additionalProperties": false
@@ -381,10 +393,13 @@ pub fn list_tools() -> Value {
             },
             {
                 "name": "doctor",
-                "description": "Check which tools referenced by the library are installed (via `which`). Useful for picking commands that will actually work on this host.",
+                "description": "Check installed tools plus stale jobs and orphaned runtime artifacts for the loaded engagement.",
                 "inputSchema": {
                     "type": "object",
-                    "properties": {"missing_only": {"type": "boolean", "default": false}},
+                    "properties": {
+                        "missing_only": {"type": "boolean", "default": false},
+                        "repair": {"type": "boolean", "default": false}
+                    },
                     "additionalProperties": false
                 }
             }
@@ -668,6 +683,7 @@ async fn tool_run_command(args: Value, state: Arc<Mutex<State>>) -> Result<Value
         profile_name,
         command_id,
         command_title,
+        runtime_token,
     ) = {
         let state = state.lock().await;
         let engagement = state
@@ -694,6 +710,7 @@ async fn tool_run_command(args: Value, state: Arc<Mutex<State>>) -> Result<Value
         }
         let redacted = crate::security::redact_command(&rendered.resolved, &context);
         let job_id = uuid::Uuid::new_v4().to_string();
+        let runtime_token = uuid::Uuid::new_v4().to_string();
         let log_path = Engagement::jobs_dir(&engagement.dir).join(format!("{}.log", job_id));
         (
             rendered.resolved,
@@ -706,6 +723,7 @@ async fn tool_run_command(args: Value, state: Arc<Mutex<State>>) -> Result<Value
             context.profile.as_ref().map(|profile| profile.name.clone()),
             command.id.clone(),
             command.title.clone(),
+            runtime_token,
         )
     };
 
@@ -761,7 +779,11 @@ async fn tool_run_command(args: Value, state: Arc<Mutex<State>>) -> Result<Value
     let log_file = crate::security::create_private_file(&log_path)?;
     let log_clone = log_file.try_clone().ok();
     let mut command = Command::new("bash");
-    command.arg("-lc").arg(&resolved);
+    command
+        .arg("-lc")
+        .arg(&resolved)
+        .env(crate::job_runtime::JOB_ID_ENV, &job_id)
+        .env(crate::job_runtime::JOB_TOKEN_ENV, &runtime_token);
     command.stdout(log_file);
     if let Some(stderr) = log_clone {
         command.stderr(stderr);
@@ -783,13 +805,29 @@ async fn tool_run_command(args: Value, state: Arc<Mutex<State>>) -> Result<Value
     let pid = child
         .id()
         .ok_or_else(|| anyhow!("spawned command did not expose a process id"))?;
+    let identity = RuntimeIdentity::new(job_id.clone(), pid, runtime_token);
+    if let Err(err) = crate::job_runtime::persist(&Engagement::jobs_dir(&engagement_dir), &identity)
+    {
+        terminate_child(&mut child, &identity).await;
+        let mut state = state.lock().await;
+        update_job(&mut state, &job_id, JobStatus::Failed, None);
+        return Err(err).context("persist runtime identity");
+    }
     {
         let mut state = state.lock().await;
-        state.running_pids.insert(job_id.clone(), pid);
+        state.running_jobs.insert(
+            job_id.clone(),
+            RunningProcess {
+                identity: identity.clone(),
+                recovered: false,
+            },
+        );
     }
 
     let state_for_task = state.clone();
     let job_id_for_task = job_id.clone();
+    let identity_for_task = identity.clone();
+    let jobs_dir_for_task = Engagement::jobs_dir(&engagement_dir);
     tokio::spawn(async move {
         let outcome = tokio::time::timeout(timeout, child.wait()).await;
         let (status, exit_code) = match outcome {
@@ -806,12 +844,13 @@ async fn tool_run_command(args: Value, state: Arc<Mutex<State>>) -> Result<Value
                 (JobStatus::Failed, None)
             }
             Err(_) => {
-                terminate_child(&mut child, pid).await;
+                terminate_child(&mut child, &identity_for_task).await;
                 (JobStatus::TimedOut, None)
             }
         };
         let mut state = state_for_task.lock().await;
-        state.running_pids.remove(&job_id_for_task);
+        state.running_jobs.remove(&job_id_for_task);
+        crate::job_runtime::remove(&jobs_dir_for_task, &job_id_for_task);
         update_job(&mut state, &job_id_for_task, status, exit_code);
     });
 
@@ -858,55 +897,43 @@ fn force_update_job(state: &mut State, job_id: &str, status: JobStatus, code: Op
     }
 }
 
-async fn terminate_child(child: &mut tokio::process::Child, pid: u32) {
+async fn terminate_child(child: &mut tokio::process::Child, identity: &RuntimeIdentity) {
     #[cfg(unix)]
     {
-        let _ = send_process_group_signal(pid, "TERM").await;
+        let _ = crate::job_runtime::signal_process_group(identity, "TERM", false);
         if tokio::time::timeout(std::time::Duration::from_secs(2), child.wait())
             .await
             .is_err()
         {
-            let _ = send_process_group_signal(pid, "KILL").await;
+            let _ = crate::job_runtime::signal_process_group(identity, "KILL", false);
             let _ = child.wait().await;
         }
     }
     #[cfg(not(unix))]
     {
-        let _ = pid;
+        let _ = identity;
         let _ = child.kill().await;
         let _ = child.wait().await;
     }
-}
-
-#[cfg(unix)]
-async fn send_process_group_signal(pid: u32, signal: &str) -> Result<()> {
-    let status = Command::new("kill")
-        .arg(format!("-{}", signal))
-        .arg(format!("-{}", pid))
-        .status()
-        .await
-        .with_context(|| format!("send {} to process group {}", signal, pid))?;
-    if !status.success() {
-        return Err(anyhow!(
-            "failed to send {} to process group {}",
-            signal,
-            pid
-        ));
-    }
-    Ok(())
 }
 
 #[derive(Deserialize)]
 struct TailArgs {
     job_id: String,
     lines: Option<usize>,
+    max_bytes: Option<u64>,
 }
 
 async fn tool_tail_job(args: Value, state: Arc<Mutex<State>>) -> Result<Value> {
     let args: TailArgs = serde_json::from_value(args).map_err(|err| anyhow!("{}", err))?;
     let lines_requested = args.lines.unwrap_or(200).clamp(1, 5000);
+    let max_bytes = args
+        .max_bytes
+        .unwrap_or(crate::log_io::DEFAULT_TAIL_BYTES)
+        .clamp(4096, 64 * 1024 * 1024);
     let (log_path, status, exit_code, secrets) = {
-        let state = state.lock().await;
+        let mut state = state.lock().await;
+        refresh_recovered_jobs(&mut state);
         let engagement = state
             .engagement
             .as_ref()
@@ -929,20 +956,32 @@ async fn tool_tail_job(args: Value, state: Arc<Mutex<State>>) -> Result<Value> {
             ),
         )
     };
-    let body = match log_path {
-        Some(path) if path.exists() => fs::read_to_string(&path).await.unwrap_or_default(),
-        _ => String::new(),
+    let output = match log_path {
+        Some(path) if path.exists() => {
+            crate::log_io::tail_lines(&path, lines_requested, max_bytes)?
+        }
+        _ => crate::log_io::TailOutput {
+            lines: Vec::new(),
+            total_lines: Some(0),
+            file_bytes: 0,
+            scanned_bytes: 0,
+            truncated: false,
+        },
     };
-    let body = crate::security::redact_values(&body, &secrets);
-    let lines: Vec<&str> = body.lines().collect();
-    let start = lines.len().saturating_sub(lines_requested);
-    let tail: Vec<String> = lines[start..].iter().map(|line| line.to_string()).collect();
+    let tail = output
+        .lines
+        .iter()
+        .map(|line| crate::security::redact_values(line, &secrets))
+        .collect::<Vec<_>>();
     Ok(json!({
         "job_id": args.job_id,
         "status": format!("{:?}", status).to_lowercase(),
         "exit_code": exit_code,
         "shown_lines": tail.len(),
-        "total_lines": lines.len(),
+        "total_lines": output.total_lines,
+        "file_bytes": output.file_bytes,
+        "scanned_bytes": output.scanned_bytes,
+        "truncated": output.truncated,
         "tail": tail.join("
     "),
     }))
@@ -953,18 +992,19 @@ struct GrepArgs {
     job_id: String,
     pattern: String,
     ignore_case: Option<bool>,
+    max_bytes: Option<u64>,
 }
 
 async fn tool_grep_job(args: Value, state: Arc<Mutex<State>>) -> Result<Value> {
     let args: GrepArgs = serde_json::from_value(args).map_err(|err| anyhow!("{}", err))?;
     let ignore_case = args.ignore_case.unwrap_or(true);
-    let needle = if ignore_case {
-        args.pattern.to_lowercase()
-    } else {
-        args.pattern.clone()
-    };
+    let max_bytes = args
+        .max_bytes
+        .unwrap_or(crate::log_io::DEFAULT_GREP_BYTES)
+        .clamp(4096, 256 * 1024 * 1024);
     let (log_path, secrets) = {
-        let state = state.lock().await;
+        let mut state = state.lock().await;
+        refresh_recovered_jobs(&mut state);
         let engagement = state
             .engagement
             .as_ref()
@@ -986,28 +1026,57 @@ async fn tool_grep_job(args: Value, state: Arc<Mutex<State>>) -> Result<Value> {
             ),
         )
     };
-    let body = fs::read_to_string(&log_path).await.unwrap_or_default();
-    let body = crate::security::redact_values(&body, &secrets);
-    let mut matches = Vec::new();
-    for (index, line) in body.lines().enumerate() {
-        let haystack = if ignore_case {
-            line.to_lowercase()
-        } else {
-            line.to_string()
-        };
-        if haystack.contains(&needle) {
-            matches.push(json!({"line": index + 1, "text": line}));
-            if matches.len() >= 200 {
-                break;
-            }
-        }
+    let output = crate::log_io::grep_lines(&log_path, &args.pattern, ignore_case, 200, max_bytes)?;
+    let matches = output
+        .matches
+        .into_iter()
+        .map(|entry| {
+            json!({
+                "line": entry.line,
+                "text": crate::security::redact_values(&entry.text, &secrets),
+                "line_truncated": entry.line_truncated,
+            })
+        })
+        .collect::<Vec<_>>();
+    Ok(json!({
+        "matches": matches,
+        "count": matches.len(),
+        "scanned_bytes": output.scanned_bytes,
+        "truncated": output.truncated,
+    }))
+}
+
+fn refresh_recovered_jobs(state: &mut State) {
+    let stale = state
+        .running_jobs
+        .iter()
+        .filter(|(_, process)| {
+            process.recovered
+                && crate::job_runtime::identity_state(&process.identity)
+                    != crate::job_runtime::IdentityState::Alive
+        })
+        .map(|(job_id, _)| job_id.clone())
+        .collect::<Vec<_>>();
+    if stale.is_empty() {
+        return;
     }
-    Ok(json!({"matches": matches, "count": matches.len()}))
+    let jobs_dir = state
+        .engagement
+        .as_ref()
+        .map(|engagement| Engagement::jobs_dir(&engagement.dir));
+    for job_id in stale {
+        state.running_jobs.remove(&job_id);
+        if let Some(jobs_dir) = &jobs_dir {
+            crate::job_runtime::remove(jobs_dir, &job_id);
+        }
+        force_update_job(state, &job_id, JobStatus::Unknown, None);
+    }
 }
 
 async fn tool_list_jobs(args: Value, state: Arc<Mutex<State>>) -> Result<Value> {
     let limit = args.get("limit").and_then(|v| v.as_u64()).unwrap_or(20) as usize;
-    let s = state.lock().await;
+    let mut s = state.lock().await;
+    refresh_recovered_jobs(&mut s);
     let eng = s
         .engagement
         .as_ref()
@@ -1042,39 +1111,27 @@ async fn tool_kill_job(args: Value, state: Arc<Mutex<State>>) -> Result<Value> {
         .and_then(Value::as_str)
         .ok_or_else(|| anyhow!("missing job_id"))?
         .to_string();
-    let pid = {
-        let state = state.lock().await;
+    let process = {
+        let mut state = state.lock().await;
+        refresh_recovered_jobs(&mut state);
         state
-            .running_pids
+            .running_jobs
             .get(&job_id)
-            .copied()
-            .ok_or_else(|| anyhow!("job '{}' is not running in this MCP session", job_id))?
+            .cloned()
+            .ok_or_else(|| anyhow!("job '{}' is not running", job_id))?
     };
 
-    #[cfg(unix)]
-    {
-        send_process_group_signal(pid, "TERM").await?;
-        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-        let alive = Command::new("kill")
-            .arg("-0")
-            .arg(format!("-{}", pid))
-            .status()
-            .await
-            .map(|status| status.success())
-            .unwrap_or(false);
-        if alive {
-            send_process_group_signal(pid, "KILL").await?;
-        }
-    }
-    #[cfg(not(unix))]
-    {
-        return Err(anyhow!(
-            "job cancellation is not supported on this platform yet"
-        ));
+    crate::job_runtime::signal_process_group(&process.identity, "TERM", process.recovered)?;
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    if crate::job_runtime::process_group_exists(&process.identity) {
+        crate::job_runtime::signal_process_group(&process.identity, "KILL", false)?;
     }
 
     let mut state = state.lock().await;
-    state.running_pids.remove(&job_id);
+    state.running_jobs.remove(&job_id);
+    if let Some(engagement) = state.engagement.as_ref() {
+        crate::job_runtime::remove(&Engagement::jobs_dir(&engagement.dir), &job_id);
+    }
     force_update_job(&mut state, &job_id, JobStatus::Cancelled, None);
     Ok(json!({"job_id": job_id, "status": "cancelled"}))
 }
@@ -1249,8 +1306,10 @@ async fn tool_engagement_switch(args: Value, state: Arc<Mutex<State>>) -> Result
         .ok_or_else(|| anyhow!("missing name"))?
         .to_string();
     let mut s = state.lock().await;
-    let eng = Engagement::load_named(&s.root, &name)
+    let mut eng = Engagement::load_named(&s.root, &name)
         .with_context(|| format!("load engagement '{}'", name))?;
+    s.running_jobs =
+        crate::job_runtime::recover_running_map(&mut eng.history, &Engagement::jobs_dir(&eng.dir));
     s.engagement = Some(eng);
     s.reload_library();
     Ok(json!({"ok": true, "engagement": name}))
@@ -1275,6 +1334,8 @@ async fn tool_engagement_new(args: Value, state: Arc<Mutex<State>>) -> Result<Va
             toml::to_string_pretty(&eng.meta)?,
         )?;
     }
+    s.running_jobs =
+        crate::job_runtime::recover_running_map(&mut eng.history, &Engagement::jobs_dir(&eng.dir));
     s.engagement = Some(eng);
     s.reload_library();
     Ok(json!({"ok": true, "engagement": name}))
@@ -1283,29 +1344,30 @@ async fn tool_engagement_new(args: Value, state: Arc<Mutex<State>>) -> Result<Va
 async fn tool_doctor(args: Value, state: Arc<Mutex<State>>) -> Result<Value> {
     let missing_only = args
         .get("missing_only")
-        .and_then(|v| v.as_bool())
+        .and_then(Value::as_bool)
         .unwrap_or(false);
-    let s = state.lock().await;
-    let tools = s.library.all_tools_referenced();
-    let mut present = Vec::new();
-    let mut missing = Vec::new();
-    for t in tools {
-        if which::which(&t).is_ok() {
-            present.push(t);
-        } else {
-            missing.push(t);
-        }
-    }
-    present.sort();
-    missing.sort();
+    let repair = args.get("repair").and_then(Value::as_bool).unwrap_or(false);
+    let mut state = state.lock().await;
+    refresh_recovered_jobs(&mut state);
+    let tools = crate::health::check_tools(state.library.all_tools_referenced());
+    let engagement = state
+        .engagement
+        .as_mut()
+        .map(|engagement| crate::health::inspect_engagement(engagement, repair))
+        .transpose()?;
     if missing_only {
-        Ok(json!({"missing": missing, "missing_count": missing.len()}))
+        Ok(json!({
+            "missing": tools.missing,
+            "missing_count": tools.missing.len(),
+            "engagement": engagement,
+        }))
     } else {
         Ok(json!({
-            "present": present,
-            "missing": missing,
-            "present_count": present.len(),
-            "missing_count": missing.len(),
+            "present": tools.present,
+            "missing": tools.missing,
+            "present_count": tools.present.len(),
+            "missing_count": tools.missing.len(),
+            "engagement": engagement,
         }))
     }
 }

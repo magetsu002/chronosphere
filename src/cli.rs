@@ -133,6 +133,9 @@ pub enum Command {
         /// Only print missing tools (script-friendly).
         #[arg(long)]
         missing: bool,
+        /// Reconcile stale jobs and clean orphaned runtime artifacts.
+        #[arg(long)]
+        repair: bool,
     },
 
     /// Extract embedded built-in commands to the user data dir.
@@ -566,6 +569,8 @@ engagement_cli!(
     DoctorCli, "doctor",
     #[arg(long)]
     pub missing: bool,
+    #[arg(long)]
+    pub repair: bool,
 );
 
 engagement_cli!(
@@ -852,7 +857,10 @@ pub async fn try_early_dispatch() -> Result<bool> {
             let c = DoctorCli::parse_from(&argv);
             dispatch(cli_from(
                 c.engagement,
-                Command::Doctor { missing: c.missing },
+                Command::Doctor {
+                    missing: c.missing,
+                    repair: c.repair,
+                },
             ))
             .await?
         }
@@ -1041,30 +1049,38 @@ alias chronosphere='{bin}'
             }
             Ok(true)
         }
-        Command::Doctor { missing } => {
+        Command::Doctor { missing, repair } => {
             let sources = library_sources(root.as_path(), cli.opts.engagement.as_deref())?;
             let lib = load_library(&sources)?;
-            let tools = lib.all_tools_referenced();
-            let mut found = 0usize;
-            let mut not_found = Vec::new();
-            for tool in &tools {
-                if which::which(tool).is_ok() {
-                    found += 1;
-                } else {
-                    not_found.push(tool.clone());
-                }
-            }
-            not_found.sort();
+            let tools = crate::health::check_tools(lib.all_tools_referenced());
             if missing {
-                for t in &not_found {
-                    println!("{}", t);
+                for tool in &tools.missing {
+                    println!("{}", tool);
                 }
             } else {
-                println!("present: {} / {}", found, tools.len());
-                println!("missing:");
-                for t in &not_found {
-                    println!("  - {}", t);
+                println!("present: {}", tools.present.len());
+                println!("missing: {}", tools.missing.len());
+                for tool in &tools.missing {
+                    println!("  - {}", tool);
                 }
+            }
+
+            match open_engagement(&root, cli.opts.engagement.as_deref()) {
+                Ok(mut engagement) => {
+                    let health = crate::health::inspect_engagement(&mut engagement, repair)?;
+                    println!("engagement: {}", health.engagement);
+                    println!("running jobs: {}", health.running_jobs.len());
+                    println!("unknown jobs: {}", health.unknown_jobs.len());
+                    println!("orphan files: {}", health.orphan_files.len());
+                    if repair {
+                        println!("removed files: {}", health.removed_files.len());
+                        println!("archived logs: {}", health.archived_logs.len());
+                    }
+                }
+                Err(err) if cli.opts.engagement.is_none() => {
+                    tracing::debug!(?err, "doctor: no unambiguous engagement selected");
+                }
+                Err(err) => return Err(err),
             }
             Ok(true)
         }
