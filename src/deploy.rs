@@ -76,7 +76,7 @@ pub fn run(args: DeployArgs) -> Result<()> {
         args.remote_path
     );
 
-    let remote_tmp = "/tmp/chronosphere.deploy";
+    let remote_tmp = format!("/tmp/chronosphere.deploy.{}", uuid::Uuid::new_v4());
 
     if args.dry_run {
         println!("[dry-run] scp {} :{}", binary.display(), remote_tmp);
@@ -98,7 +98,7 @@ pub fn run(args: DeployArgs) -> Result<()> {
     ssh.run_scp(&binary, &format!("{}:{}", host_spec.target, remote_tmp))?;
 
     // 2) install into remote_path (with sudo if asked) + chmod +x
-    let install_cmd = build_install_cmd(remote_tmp, &args.remote_path, args.sudo);
+    let install_cmd = build_install_cmd(&remote_tmp, &args.remote_path, args.sudo);
     ssh.run_ssh(&host_spec.target, &install_cmd)?;
 
     // 3) extract embedded templates (so the remote has the command library)
