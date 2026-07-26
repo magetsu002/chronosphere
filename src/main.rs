@@ -7,6 +7,7 @@ mod cve;
 mod deploy;
 mod engagement;
 mod exec;
+mod health;
 mod input;
 mod job_runtime;
 mod library;

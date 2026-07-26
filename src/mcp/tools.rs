@@ -393,10 +393,13 @@ pub fn list_tools() -> Value {
             },
             {
                 "name": "doctor",
-                "description": "Check which tools referenced by the library are installed (via `which`). Useful for picking commands that will actually work on this host.",
+                "description": "Check installed tools plus stale jobs and orphaned runtime artifacts for the loaded engagement.",
                 "inputSchema": {
                     "type": "object",
-                    "properties": {"missing_only": {"type": "boolean", "default": false}},
+                    "properties": {
+                        "missing_only": {"type": "boolean", "default": false},
+                        "repair": {"type": "boolean", "default": false}
+                    },
                     "additionalProperties": false
                 }
             }
@@ -1341,29 +1344,30 @@ async fn tool_engagement_new(args: Value, state: Arc<Mutex<State>>) -> Result<Va
 async fn tool_doctor(args: Value, state: Arc<Mutex<State>>) -> Result<Value> {
     let missing_only = args
         .get("missing_only")
-        .and_then(|v| v.as_bool())
+        .and_then(Value::as_bool)
         .unwrap_or(false);
-    let s = state.lock().await;
-    let tools = s.library.all_tools_referenced();
-    let mut present = Vec::new();
-    let mut missing = Vec::new();
-    for t in tools {
-        if which::which(&t).is_ok() {
-            present.push(t);
-        } else {
-            missing.push(t);
-        }
-    }
-    present.sort();
-    missing.sort();
+    let repair = args.get("repair").and_then(Value::as_bool).unwrap_or(false);
+    let mut state = state.lock().await;
+    refresh_recovered_jobs(&mut state);
+    let tools = crate::health::check_tools(state.library.all_tools_referenced());
+    let engagement = state
+        .engagement
+        .as_mut()
+        .map(|engagement| crate::health::inspect_engagement(engagement, repair))
+        .transpose()?;
     if missing_only {
-        Ok(json!({"missing": missing, "missing_count": missing.len()}))
+        Ok(json!({
+            "missing": tools.missing,
+            "missing_count": tools.missing.len(),
+            "engagement": engagement,
+        }))
     } else {
         Ok(json!({
-            "present": present,
-            "missing": missing,
-            "present_count": present.len(),
-            "missing_count": missing.len(),
+            "present": tools.present,
+            "missing": tools.missing,
+            "present_count": tools.present.len(),
+            "missing_count": tools.missing.len(),
+            "engagement": engagement,
         }))
     }
 }
