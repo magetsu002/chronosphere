@@ -1,0 +1,22 @@
+Traceback (most recent call last):
+  File "/home/runner/work/chronosphere/chronosphere/.github/chronosphere_hardening.py", line 1860, in <module>
+    main()
+  File "/home/runner/work/chronosphere/chronosphere/.github/chronosphere_hardening.py", line 1849, in main
+    phase_context_safety()
+  File "/home/runner/work/chronosphere/chronosphere/.github/chronosphere_hardening.py", line 95, in phase_context_safety
+    replace_once(
+  File "/home/runner/work/chronosphere/chronosphere/.github/chronosphere_hardening.py", line 43, in replace_once
+    raise RuntimeError(
+RuntimeError: src/engagement/mod.rs: expected one match, found exact=0, flexible=0
+--- needle ---
+\
+                pub fn create(root: &Path, name: &str) -> Result<Self> {
+                    if name.is_empty()
+                        || name.contains('/')
+                        || name.contains('\\')
+                        || name.starts_with('.')
+                    {
+                        anyhow::bail!("invalid engagement name '{}'", name);
+                    }
+                    let dir = root.join(name);
+
