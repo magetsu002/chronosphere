@@ -1,3 +1,0 @@
-[1m[32m    Updating[0m crates.io index
-[1m[31merror[0m[1m:[0m the lock file /home/runner/work/chronosphere/chronosphere/Cargo.lock needs to be updated but --locked was passed to prevent this
-If you want to try to generate the lock file without accessing the network, remove the --locked flag and use --offline instead.
