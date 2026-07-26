@@ -133,8 +133,7 @@ pub fn create_private_file(path: &Path) -> Result<File> {
 
 pub fn write_private_atomic(path: &Path, contents: &[u8]) -> Result<()> {
     let parent = path.parent().unwrap_or_else(|| Path::new("."));
-    fs::create_dir_all(parent)
-        .with_context(|| format!("create directory {}", parent.display()))?;
+    fs::create_dir_all(parent).with_context(|| format!("create directory {}", parent.display()))?;
     let filename = path
         .file_name()
         .and_then(|name| name.to_str())

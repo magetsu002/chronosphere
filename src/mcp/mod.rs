@@ -91,7 +91,12 @@ async fn handle_request(req: Request, state: Arc<Mutex<tools::State>>) -> Respon
                     return Response::error(id, -32602, format!("invalid params: {}", e));
                 }
             };
-            tools::dispatch(&params.name, params.arguments.unwrap_or(serde_json::json!({})), state).await
+            tools::dispatch(
+                &params.name,
+                params.arguments.unwrap_or(serde_json::json!({})),
+                state,
+            )
+            .await
         }
         // Cursor / Claude sometimes probe these; respond with empty rather than erroring.
         "resources/list" => Ok(serde_json::json!({"resources": []})),

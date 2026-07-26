@@ -69,37 +69,37 @@ impl Engagement {
         dir.join("commands")
     }
 
-pub fn validate_name(name: &str) -> Result<()> {
-    if name.is_empty()
-        || name == "."
-        || name == ".."
-        || name.contains('/')
-        || name.contains('\\')
-        || name.starts_with('.')
-    {
-        anyhow::bail!("invalid engagement name '{}'", name);
+    pub fn validate_name(name: &str) -> Result<()> {
+        if name.is_empty()
+            || name == "."
+            || name == ".."
+            || name.contains('/')
+            || name.contains('\\')
+            || name.starts_with('.')
+        {
+            anyhow::bail!("invalid engagement name '{}'", name);
+        }
+        Ok(())
     }
-    Ok(())
-}
 
-pub fn load_named(root: &Path, name: &str) -> Result<Self> {
-    Self::validate_name(name)?;
-    let canonical_root = root
-        .canonicalize()
-        .with_context(|| format!("canonicalize engagement root {}", root.display()))?;
-    let requested = root.join(name);
-    let canonical_dir = requested
-        .canonicalize()
-        .with_context(|| format!("resolve engagement {}", requested.display()))?;
-    if !canonical_dir.starts_with(&canonical_root) {
-        anyhow::bail!("engagement '{}' escapes configured root", name);
+    pub fn load_named(root: &Path, name: &str) -> Result<Self> {
+        Self::validate_name(name)?;
+        let canonical_root = root
+            .canonicalize()
+            .with_context(|| format!("canonicalize engagement root {}", root.display()))?;
+        let requested = root.join(name);
+        let canonical_dir = requested
+            .canonicalize()
+            .with_context(|| format!("resolve engagement {}", requested.display()))?;
+        if !canonical_dir.starts_with(&canonical_root) {
+            anyhow::bail!("engagement '{}' escapes configured root", name);
+        }
+        Self::load(canonical_dir)
     }
-    Self::load(canonical_dir)
-}
 
-pub fn create(root: &Path, name: &str) -> Result<Self> {
-    Self::validate_name(name)?;
-    let dir = root.join(name);
+    pub fn create(root: &Path, name: &str) -> Result<Self> {
+        Self::validate_name(name)?;
+        let dir = root.join(name);
         if dir.exists() {
             anyhow::bail!("engagement '{}' already exists", name);
         }
@@ -144,43 +144,42 @@ pub fn create(root: &Path, name: &str) -> Result<Self> {
         let meta_path = Self::meta_path(&dir);
         let meta_str = fs::read_to_string(&meta_path)
             .with_context(|| format!("read {}", meta_path.display()))?;
-        let meta: EngagementMeta =
-            toml::from_str(&meta_str).context("parse engagement.toml")?;let targets_path = Self::targets_path(&dir);
-let targets = if targets_path.exists() {
-    TargetStore::load(&targets_path).context("load targets.json")?
-} else {
-    TargetStore::new()
-};
-let aps_path = Self::aps_path(&dir);
-let aps = if aps_path.exists() {
-    ApStore::load(&aps_path).context("load aps.json")?
-} else {
-    ApStore::new()
-};
-let pivots_path = Self::pivots_path(&dir);
-let pivots = if pivots_path.exists() {
-    PivotStore::load(&pivots_path).context("load pivots.json")?
-} else {
-    PivotStore::new()
-};
-let profiles_path = Self::creds_path(&dir);
-let profiles = if profiles_path.exists() {
-    ProfileStore::load(&profiles_path).context("load creds.json")?
-} else {
-    ProfileStore::new()
-};
-let variables_path = Self::variables_path(&dir);
-let variables = if variables_path.exists() {
-    VariableStore::load(&variables_path).context("load variables.json")?
-} else {
-    VariableStore::new()
-};
-let mut history = HistoryStore::open
-(&Self::history_path(&dir))?;
-let secrets = crate::security::store_secrets(&profiles, &aps, &pivots, &variables);
-if history.redact_values(&secrets) {
-    tracing::warn!("redacted sensitive values from legacy job history");
-}
+        let meta: EngagementMeta = toml::from_str(&meta_str).context("parse engagement.toml")?;
+        let targets_path = Self::targets_path(&dir);
+        let targets = if targets_path.exists() {
+            TargetStore::load(&targets_path).context("load targets.json")?
+        } else {
+            TargetStore::new()
+        };
+        let aps_path = Self::aps_path(&dir);
+        let aps = if aps_path.exists() {
+            ApStore::load(&aps_path).context("load aps.json")?
+        } else {
+            ApStore::new()
+        };
+        let pivots_path = Self::pivots_path(&dir);
+        let pivots = if pivots_path.exists() {
+            PivotStore::load(&pivots_path).context("load pivots.json")?
+        } else {
+            PivotStore::new()
+        };
+        let profiles_path = Self::creds_path(&dir);
+        let profiles = if profiles_path.exists() {
+            ProfileStore::load(&profiles_path).context("load creds.json")?
+        } else {
+            ProfileStore::new()
+        };
+        let variables_path = Self::variables_path(&dir);
+        let variables = if variables_path.exists() {
+            VariableStore::load(&variables_path).context("load variables.json")?
+        } else {
+            VariableStore::new()
+        };
+        let mut history = HistoryStore::open(&Self::history_path(&dir))?;
+        let secrets = crate::security::store_secrets(&profiles, &aps, &pivots, &variables);
+        if history.redact_values(&secrets) {
+            tracing::warn!("redacted sensitive values from legacy job history");
+        }
         fs::create_dir_all(Self::jobs_dir(&dir)).ok();
         fs::create_dir_all(Self::overrides_dir(&dir)).ok();
         Ok(Self {

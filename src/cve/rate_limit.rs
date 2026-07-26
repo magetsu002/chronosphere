@@ -74,13 +74,13 @@ impl HttpClient {
         loop {
             let wait = {
                 let mut map = self.limiters.lock().await;
-                let limiter = map.entry(provider.to_string()).or_insert_with(|| {
-                    ProviderLimiter {
+                let limiter = map
+                    .entry(provider.to_string())
+                    .or_insert_with(|| ProviderLimiter {
                         min_interval: Duration::from_millis(1000),
                         last_request: None,
                         backoff_until: None,
-                    }
-                });
+                    });
 
                 let now = Instant::now();
                 if let Some(until) = limiter.backoff_until {
@@ -155,7 +155,8 @@ impl HttpClient {
                 return Ok(resp);
             }
 
-            if status == StatusCode::TOO_MANY_REQUESTS || status == StatusCode::SERVICE_UNAVAILABLE {
+            if status == StatusCode::TOO_MANY_REQUESTS || status == StatusCode::SERVICE_UNAVAILABLE
+            {
                 attempt += 1;
                 if attempt >= MAX_RETRIES {
                     bail!("{provider}: rate limited after {MAX_RETRIES} retries ({status})");
@@ -167,7 +168,8 @@ impl HttpClient {
                     .and_then(|s| s.parse::<u64>().ok())
                     .unwrap_or(DEFAULT_RETRY_AFTER_SECS);
                 tracing::warn!(provider, attempt, retry_secs, "rate limited, backing off");
-                self.set_backoff(provider, Duration::from_secs(retry_secs)).await;
+                self.set_backoff(provider, Duration::from_secs(retry_secs))
+                    .await;
                 sleep(Duration::from_secs(retry_secs)).await;
                 continue;
             }

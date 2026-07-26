@@ -8,7 +8,11 @@ use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
 
 pub fn render(f: &mut Frame, area: Rect, app: &App) {
     let is_focused = app.focus == Focus::Preview;
-    let border_style = if is_focused { Theme::border_active() } else { Theme::border() };
+    let border_style = if is_focused {
+        Theme::border_active()
+    } else {
+        Theme::border()
+    };
     let block = Block::default()
         .borders(Borders::ALL)
         .title(Span::styled(" preview ", Theme::accent_bold()))

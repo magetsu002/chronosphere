@@ -17,11 +17,7 @@ pub fn slugify_key_name(name: &str) -> String {
             }
         })
         .collect();
-    if s.is_empty() {
-        "pivot".into()
-    } else {
-        s
-    }
+    if s.is_empty() { "pivot".into() } else { s }
 }
 
 /// Default private key path when `ssh_identity` is unset: `engagement/.ssh/id_{target_or_pivot}`.
@@ -58,8 +54,7 @@ pub fn pivot_ssh_auth_available(
     if pivot.ssh_password.as_deref().is_some_and(|s| !s.is_empty()) {
         return true;
     }
-    resolve_ssh_identity(pivot, engagement_dir, target_name)
-        .is_some_and(|p| p.exists())
+    resolve_ssh_identity(pivot, engagement_dir, target_name).is_some_and(|p| p.exists())
 }
 
 /// Pick key auth when a key file exists; otherwise password. Never combine sshpass with `-i`.
@@ -180,11 +175,11 @@ impl SshConn {
 
     fn wrap_prog(&self, prog: &str, args: &[String]) -> String {
         let mut cmd = String::new();
-if let Some(password) = &self.password {
-    cmd.push_str("SSHPASS=");
-    cmd.push_str(&shell_escape(password));
-    cmd.push_str(" sshpass -e ");
-}
+        if let Some(password) = &self.password {
+            cmd.push_str("SSHPASS=");
+            cmd.push_str(&shell_escape(password));
+            cmd.push_str(" sshpass -e ");
+        }
         cmd.push_str(prog);
         for a in args {
             cmd.push(' ');
@@ -230,11 +225,11 @@ if let Some(password) = &self.password {
         let remote_exec = shell_escape(&format!(
             "chmod +x {remote_script} && bash {remote_script}; ec=$?; rm -f {remote_script}; exit $ec"
         ));
-let mut ssh_cmd = if let Some(password) = &self.password {
-    format!("SSHPASS={} sshpass -e ssh", shell_escape(password))
-} else {
-    "ssh".into()
-};
+        let mut ssh_cmd = if let Some(password) = &self.password {
+            format!("SSHPASS={} sshpass -e ssh", shell_escape(password))
+        } else {
+            "ssh".into()
+        };
         if interactive {
             ssh_cmd.push_str(" -tt");
         }
@@ -321,7 +316,11 @@ impl SshDeploySession {
         cmd.arg(host).arg(remote_cmd);
         let status = cmd.status().with_context(|| "ssh")?;
         if !status.success() {
-            bail!("ssh '{}' failed with status {:?}", remote_cmd, status.code());
+            bail!(
+                "ssh '{}' failed with status {:?}",
+                remote_cmd,
+                status.code()
+            );
         }
         Ok(())
     }
@@ -342,9 +341,7 @@ impl SshDeploySession {
         command
             .arg(Self::port_flag(prog))
             .arg(self.port.to_string());
-        command
-            .arg("-o")
-            .arg("StrictHostKeyChecking=accept-new");
+        command.arg("-o").arg("StrictHostKeyChecking=accept-new");
         if let Some(identity) = &self.identity {
             command.arg("-i").arg(identity);
         }
@@ -357,14 +354,14 @@ impl SshDeploySession {
 mod tests {
     use super::*;
 
-#[test]
-fn deploy_session_uses_protocol_specific_port_flags() {
-    assert_eq!(SshDeploySession::port_flag("ssh"), "-p");
-    assert_eq!(SshDeploySession::port_flag("scp"), "-P");
-}
+    #[test]
+    fn deploy_session_uses_protocol_specific_port_flags() {
+        assert_eq!(SshDeploySession::port_flag("ssh"), "-p");
+        assert_eq!(SshDeploySession::port_flag("scp"), "-P");
+    }
 
-#[test]
-fn remote_wrapper_contains_scp_and_ssh() {
+    #[test]
+    fn remote_wrapper_contains_scp_and_ssh() {
         let conn = SshConn {
             target: "user@10.0.0.5".into(),
             port: 22,
@@ -382,8 +379,12 @@ fn remote_wrapper_contains_scp_and_ssh() {
         assert!(w.contains("scp"));
         assert!(w.contains("ssh"));
         assert!(w.contains("tee"));
-        assert!(w.contains("scp -P 22") || w.contains("scp -P '22'") || w.contains("scp -P \"22\""));
-        assert!(w.contains("ssh -p 22") || w.contains("ssh -p '22'") || w.contains("ssh -p \"22\""));
+        assert!(
+            w.contains("scp -P 22") || w.contains("scp -P '22'") || w.contains("scp -P \"22\"")
+        );
+        assert!(
+            w.contains("ssh -p 22") || w.contains("ssh -p '22'") || w.contains("ssh -p \"22\"")
+        );
     }
 
     #[test]
@@ -425,8 +426,7 @@ fn remote_wrapper_contains_scp_and_ssh() {
             ssh_password: Some("secret".into()),
             ..Pivot::default()
         };
-        let (identity, password) =
-            resolve_ssh_auth(&pivot, &dir, Some("mytarget")).unwrap();
+        let (identity, password) = resolve_ssh_auth(&pivot, &dir, Some("mytarget")).unwrap();
         assert!(identity.is_some());
         assert!(password.is_none());
         let w = SshConn::from_pivot(&pivot, &dir, Some("mytarget"))

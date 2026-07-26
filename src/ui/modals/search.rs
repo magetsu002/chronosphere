@@ -10,7 +10,11 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
     let r = centered_rect(area, 80, 70);
     f.render_widget(Clear, r);
     let global = matches!(app.mode, crate::vim::Mode::SearchGlobal);
-    let title = if global { " search: all " } else { " search: current category " };
+    let title = if global {
+        " search: all "
+    } else {
+        " search: current category "
+    };
 
     let block = Block::default()
         .borders(Borders::ALL)

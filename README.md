@@ -85,7 +85,7 @@ Inside the TUI, press `?` for the full keymap. The basics:
 
 ### Local build (macOS, Linux)
 
-Needs Rust ≥ 1.83 (edition 2024).
+Needs Rust ≥ 1.85 (edition 2024).
 
 ```bash
 cargo install --path .                      # installs into ~/.cargo/bin/chronosphere
@@ -318,7 +318,7 @@ chronosphere/
 
 The following are sketched in the design notes but not implemented:
 
-- **Local CVE index** with FTS5 + optional embeddings for description search.
+- **Optional semantic CVE search** on top of the implemented local FTS5 index.
 - **PoC pipeline** that monitors NVD/KEV, pulls from `trickest/cve` etc., and surfaces them as runnable commands.
 - **Obfuscation toolbelt** (PowerShell encoders, AMSI bypass templates, donut/ScareCrow wrappers).
 - **Pro-Lab evasion preset** (defender recon, ETW disable hints, etc.).
@@ -329,7 +329,7 @@ If you need any of these urgently, open an issue and we'll talk.
 
 | what | where |
 | --- | --- |
-| engagements | `~/.local/share/chronosphere/engagements/` (Linux) or `~/Library/Application Support/chronosphere/engagements/` (macOS) |
+| engagements | `<current directory>/engagements/` by default, or the directory passed with `--root` |
 | built-in commands (after first run) | `~/.local/share/chronosphere/commands/` |
 | job logs (per engagement) | `<engagement>/jobs/<uuid>.log` |
 | job history | `<engagement>/jobs.jsonl` |

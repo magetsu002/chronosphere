@@ -37,11 +37,7 @@ async fn main() -> Result<()> {
 
     // Default behavior: launch TUI.
     builtin::ensure_user_dir().ok();
-    let res = app::App::new(boot)
-        .await
-        .context("init app")?
-        .run()
-        .await;
+    let res = app::App::new(boot).await.context("init app")?.run().await;
     if let Err(err) = &res {
         tracing::error!(?err, "app exited with error");
     }
@@ -59,7 +55,9 @@ fn init_tracing() -> Result<()> {
         .open(&log_path)
         .with_context(|| format!("open log file {}", log_path.display()))?;
     fmt()
-        .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")))
+        .with_env_filter(
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
+        )
         .with_ansi(false)
         .with_writer(file)
         .init();

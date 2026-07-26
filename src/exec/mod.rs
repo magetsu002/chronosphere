@@ -59,30 +59,30 @@ impl Executor {
         } else {
             TmuxAvailability::Unavailable
         };
-Self {
-    availability,
-    jobs_dir,
-    engagement_dir: engagement.dir.clone(),
-    secrets: crate::security::store_secrets(
-        &engagement.profiles,
-        &engagement.aps,
-        &engagement.pivots,
-        &engagement.variables,
-    ),
-}
+        Self {
+            availability,
+            jobs_dir,
+            engagement_dir: engagement.dir.clone(),
+            secrets: crate::security::store_secrets(
+                &engagement.profiles,
+                &engagement.aps,
+                &engagement.pivots,
+                &engagement.variables,
+            ),
+        }
     }
 
     /// Spawn a command. Non-interactive → tmux new-window detached + tee to log. Interactive →
     /// either a foreground tmux window (if we're inside tmux) or an external terminal.
-pub fn spawn(&self, req: SpawnRequest) -> Result<JobRecord> {
-    let unresolved = crate::render::find_unresolved(&req.resolved);
-    if !unresolved.is_empty() {
-        anyhow::bail!(
-            "command has unresolved placeholders: {}",
-            unresolved.join(", ")
-        );
-    }
-    let id = Uuid::new_v4().to_string();
+    pub fn spawn(&self, req: SpawnRequest) -> Result<JobRecord> {
+        let unresolved = crate::render::find_unresolved(&req.resolved);
+        if !unresolved.is_empty() {
+            anyhow::bail!(
+                "command has unresolved placeholders: {}",
+                unresolved.join(", ")
+            );
+        }
+        let id = Uuid::new_v4().to_string();
         let log_path = self.jobs_dir.join(format!("{}.log", id));
         let status_path = self.jobs_dir.join(format!("{}.status", id));
         let _ = crate::security::create_private_file(&log_path)?;
@@ -91,10 +91,9 @@ pub fn spawn(&self, req: SpawnRequest) -> Result<JobRecord> {
         let status_str = status_path.to_string_lossy().to_string();
 
         let resolved = if req.execution_mode == ExecutionMode::Remote {
-            let pivot = req
-                .remote_pivot
-                .as_ref()
-                .ok_or_else(|| anyhow::anyhow!("remote execution requires an active pivot with SSH"))?;
+            let pivot = req.remote_pivot.as_ref().ok_or_else(|| {
+                anyhow::anyhow!("remote execution requires an active pivot with SSH")
+            })?;
             if !pivot.has_ssh() {
                 anyhow::bail!("pivot '{}' missing ssh_user/ssh_host", pivot.name);
             }
@@ -124,13 +123,17 @@ pub fn spawn(&self, req: SpawnRequest) -> Result<JobRecord> {
             let opts = tmux::NewWindowOpts {
                 session: tmux_session_name(self.availability),
                 window_name: &window_name,
-                detached: !req.interactive || self.availability == TmuxAvailability::SessionBootstrapped,
+                detached: !req.interactive
+                    || self.availability == TmuxAvailability::SessionBootstrapped,
                 command: &wrapped,
             };
             match tmux::new_window(opts) {
                 Ok(wid) => Some(wid),
                 Err(err) => {
-                    tracing::error!(?err, "tmux new-window failed, falling back to external terminal");
+                    tracing::error!(
+                        ?err,
+                        "tmux new-window failed, falling back to external terminal"
+                    );
                     spawn_external_terminal(&resolved, &log_str, &status_str)?;
                     None
                 }
@@ -215,12 +218,9 @@ pub fn spawn(&self, req: SpawnRequest) -> Result<JobRecord> {
                 tmux::select_window(tmux_session_name(self.availability), w)?;
                 Ok(FocusResult::Focused)
             }
-            (TmuxAvailability::SessionBootstrapped, Some(w)) => {
-                Ok(FocusResult::AttachCommand(format!(
-                    "tmux attach -t {} \\; select-window -t {}",
-                    TMUX_SESSION, w
-                )))
-            }
+            (TmuxAvailability::SessionBootstrapped, Some(w)) => Ok(FocusResult::AttachCommand(
+                format!("tmux attach -t {} \\; select-window -t {}", TMUX_SESSION, w),
+            )),
             _ => Ok(FocusResult::Unfocusable),
         }
     }

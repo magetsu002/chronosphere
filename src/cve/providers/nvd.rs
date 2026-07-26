@@ -1,5 +1,7 @@
 use crate::cve::config::SyncState;
-use crate::cve::model::{CveProduct, CveRecord, CveReference, MonthSync, NvdMonthField, severity_from_score};
+use crate::cve::model::{
+    CveProduct, CveRecord, CveReference, MonthSync, NvdMonthField, severity_from_score,
+};
 use crate::cve::rate_limit::HttpClient;
 use crate::cve::store::CveStore;
 
@@ -34,7 +36,10 @@ pub async fn fetch_feed_meta(client: &HttpClient, feed_name: &str) -> Result<Nvd
     if sha256.is_empty() {
         bail!("no sha256 in meta for {feed_name}");
     }
-    Ok(NvdFeedMeta { sha256, last_modified })
+    Ok(NvdFeedMeta {
+        sha256,
+        last_modified,
+    })
 }
 
 pub async fn download_and_import_feed(
@@ -59,11 +64,7 @@ pub async fn download_and_import_feed(
 
     let added = import_nvd_json(store, &json)?;
     let updated = 0u64; // upsert returns added vs updated per-record internally
-    state.mark_feed(
-        feed_name,
-        &meta.sha256,
-        meta.last_modified.as_deref(),
-    );
+    state.mark_feed(feed_name, &meta.sha256, meta.last_modified.as_deref());
     Ok((added, updated))
 }
 
@@ -95,8 +96,14 @@ pub fn import_nvd_json_stats(store: &mut CveStore, json: &str) -> Result<(u64, u
 pub fn parse_nvd_item(item: &Value) -> Option<CveRecord> {
     let cve = item.get("cve")?;
     let id = cve.get("id")?.as_str()?.to_string();
-    let published = cve.get("published").and_then(|v| v.as_str()).map(String::from);
-    let modified = cve.get("lastModified").and_then(|v| v.as_str()).map(String::from);
+    let published = cve
+        .get("published")
+        .and_then(|v| v.as_str())
+        .map(String::from);
+    let modified = cve
+        .get("lastModified")
+        .and_then(|v| v.as_str())
+        .map(String::from);
     let description = cve
         .get("descriptions")
         .and_then(|d| d.as_array())
@@ -118,7 +125,10 @@ pub fn parse_nvd_item(item: &Value) -> Option<CveRecord> {
             if let Some(m) = arr.first() {
                 if let Some(data) = m.get("cvssData") {
                     cvss_v31 = data.get("baseScore").and_then(|v| v.as_f64());
-                    vector_v31 = data.get("vectorString").and_then(|v| v.as_str()).map(String::from);
+                    vector_v31 = data
+                        .get("vectorString")
+                        .and_then(|v| v.as_str())
+                        .map(String::from);
                     if let Some(s) = cvss_v31 {
                         severity = Some(severity_from_score(s).to_string());
                     }
@@ -324,12 +334,13 @@ pub async fn sync_by_month(
         let text = resp.text().await?;
         let root: Value = serde_json::from_str(&text).context("parse nvd api response")?;
         if start_index == 0 {
-            total_results = root.get("totalResults").and_then(|v| v.as_u64()).unwrap_or(0);
+            total_results = root
+                .get("totalResults")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(0);
             tracing::info!(total = total_results, "NVD CVE count for month range");
             if progress {
-                eprintln!(
-                    "cve sync: NVD {label} ({field}): {total_results} CVEs reported by NVD"
-                );
+                eprintln!("cve sync: NVD {label} ({field}): {total_results} CVEs reported by NVD");
             }
         }
         let (a, u) = import_nvd_json_stats(store, &text)?;

@@ -17,7 +17,10 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
     };
 
     let title = if is_focused {
-        format!(" jobs ({} running) — Enter/L log ", app.jobs_running_count())
+        format!(
+            " jobs ({} running) — Enter/L log ",
+            app.jobs_running_count()
+        )
     } else {
         format!(" jobs ({} running) ", app.jobs_running_count())
     };

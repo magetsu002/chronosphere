@@ -12,11 +12,17 @@ const HELP: &[(&str, &str)] = &[
     ("j / k", "move down / up"),
     ("gg / G", "top / bottom"),
     ("Ctrl-d / Ctrl-u", "half-page down / up"),
-    ("Enter / r", "run highlighted command in background tmux window"),
+    (
+        "Enter / r",
+        "run highlighted command in background tmux window",
+    ),
     ("Nr (e.g. 5r)", "run command N times in parallel"),
     ("space", "toggle multi-select on highlighted command"),
     ("R", "run all multi-selected (or all visible in category)"),
-    ("y / Y", "yank — paste in another tmux pane: Ctrl-b ]; or cat ~/.local/share/chronosphere/last_yank.txt"),
+    (
+        "y / Y",
+        "yank — paste in another tmux pane: Ctrl-b ]; or cat ~/.local/share/chronosphere/last_yank.txt",
+    ),
     ("e", "inline edit the resolved command before running"),
     ("Tab", "filesystem path completion (in editor)"),
     ("o", "focus the active job's tmux window"),
@@ -31,20 +37,41 @@ const HELP: &[(&str, &str)] = &[
     ("Esc / Ctrl-c", "clear selection / dismiss modal"),
     ("q / :q", "quit"),
     ("", ""),
-    ("job log (floating)", "j/k scroll  Ctrl-d/u page  g/G top/bottom  f follow  o tmux"),
+    (
+        "job log (floating)",
+        "j/k scroll  Ctrl-d/u page  g/G top/bottom  f follow  o tmux",
+    ),
     ("", ""),
     (":engagement", "list/switch/new engagement"),
     (":target", "list/edit/switch active host target"),
     (":ap", "list/edit/switch active WiFi access point"),
-    (":pivot", "list/edit foothold pivots; tunnel (T) + remote (R) markers"),
-    (":exec local|remote", "run commands locally or via scp+ssh on remote pivot (all commands allowed in remote mode)"),
+    (
+        ":pivot",
+        "list/edit foothold pivots; tunnel (T) + remote (R) markers",
+    ),
+    (
+        ":exec local|remote",
+        "run commands locally or via scp+ssh on remote pivot (all commands allowed in remote mode)",
+    ),
     (":creds", "list/edit/switch active credential profile"),
-    (":variable", "template vars (iface, wordlist, …) — globals; WiFi fields live on :ap"),
-    (":variable name=value", "quick-set one variable from the command palette"),
+    (
+        ":variable",
+        "template vars (iface, wordlist, …) — globals; WiFi fields live on :ap",
+    ),
+    (
+        ":variable name=value",
+        "quick-set one variable from the command palette",
+    ),
     (":tools", "show which referenced tools are on $PATH"),
     (":reload", "force-reload command library from disk"),
-    (":cve", "browse/search local CVE index (s sync, K KEV filter)"),
-    (":write", "save inline-edited command as new id in engagement overrides"),
+    (
+        ":cve",
+        "browse/search local CVE index (s sync, K KEV filter)",
+    ),
+    (
+        ":write",
+        "save inline-edited command as new id in engagement overrides",
+    ),
 ];
 
 pub fn help_line_count() -> usize {

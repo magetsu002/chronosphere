@@ -90,8 +90,8 @@ impl CveStore {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
         }
-        let conn = Connection::open(&path)
-            .with_context(|| format!("open cve db {}", path.display()))?;
+        let conn =
+            Connection::open(&path).with_context(|| format!("open cve db {}", path.display()))?;
         conn.execute_batch("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;")?;
         conn.execute_batch(SCHEMA)?;
         Ok(Self { conn })
@@ -105,31 +105,32 @@ impl CveStore {
     }
 
     pub fn upsert(&mut self, record: &CveRecord) -> Result<bool> {
-        self.conn.execute_batch("SAVEPOINT chronosphere_cve_upsert")?;
+        self.conn
+            .execute_batch("SAVEPOINT chronosphere_cve_upsert")?;
         let result = (|| -> Result<bool> {
-        let exists: bool = self
-            .conn
-            .query_row(
-                "SELECT 1 FROM cves WHERE id = ?1",
-                params![record.id],
-                |_| Ok(true),
-            )
-            .unwrap_or(false);
+            let exists: bool = self
+                .conn
+                .query_row(
+                    "SELECT 1 FROM cves WHERE id = ?1",
+                    params![record.id],
+                    |_| Ok(true),
+                )
+                .unwrap_or(false);
 
-        let mut merged = if exists {
-            self.get(&record.id)?.unwrap_or_else(|| record.clone())
-        } else {
-            record.clone()
-        };
+            let mut merged = if exists {
+                self.get(&record.id)?.unwrap_or_else(|| record.clone())
+            } else {
+                record.clone()
+            };
 
-        merge_record(&mut merged, record);
+            merge_record(&mut merged, record);
 
-        let sources_json = serde_json::to_string(&merged.sources)?;
-        let fts_text = build_fts_text(&merged);
-        let now = Utc::now().to_rfc3339();
+            let sources_json = serde_json::to_string(&merged.sources)?;
+            let fts_text = build_fts_text(&merged);
+            let now = Utc::now().to_rfc3339();
 
-        self.conn.execute(
-            r#"INSERT INTO cves (
+            self.conn.execute(
+                r#"INSERT INTO cves (
                 id, published, modified, description, cvss_v31, cvss_v40, severity,
                 vector_v31, in_kev, kev_date_added, kev_due_date, epss_score,
                 epss_percentile, sources, fts_text, updated_at
@@ -143,52 +144,59 @@ impl CveStore {
                 epss_score=excluded.epss_score, epss_percentile=excluded.epss_percentile,
                 sources=excluded.sources, fts_text=excluded.fts_text, updated_at=excluded.updated_at
             "#,
-            params![
-                merged.id,
-                merged.published,
-                merged.modified,
-                merged.description,
-                merged.cvss_v31,
-                merged.cvss_v40,
-                merged.severity,
-                merged.vector_v31,
-                merged.in_kev as i32,
-                merged.kev_date_added,
-                merged.kev_due_date,
-                merged.epss_score,
-                merged.epss_percentile,
-                sources_json,
-                fts_text,
-                now,
-            ],
-        )?;
+                params![
+                    merged.id,
+                    merged.published,
+                    merged.modified,
+                    merged.description,
+                    merged.cvss_v31,
+                    merged.cvss_v40,
+                    merged.severity,
+                    merged.vector_v31,
+                    merged.in_kev as i32,
+                    merged.kev_date_added,
+                    merged.kev_due_date,
+                    merged.epss_score,
+                    merged.epss_percentile,
+                    sources_json,
+                    fts_text,
+                    now,
+                ],
+            )?;
 
-        self.replace_children(&merged)?;
-        self.rebuild_fts_row(&merged)?;
+            self.replace_children(&merged)?;
+            self.rebuild_fts_row(&merged)?;
 
-        Ok(!exists)
-    })();
-    match result {
-        Ok(value) => {
-            self.conn
-                .execute_batch("RELEASE SAVEPOINT chronosphere_cve_upsert")?;
-            Ok(value)
-        }
-        Err(err) => {
-            let _ = self.conn.execute_batch(
+            Ok(!exists)
+        })();
+        match result {
+            Ok(value) => {
+                self.conn
+                    .execute_batch("RELEASE SAVEPOINT chronosphere_cve_upsert")?;
+                Ok(value)
+            }
+            Err(err) => {
+                let _ = self.conn.execute_batch(
                 "ROLLBACK TO SAVEPOINT chronosphere_cve_upsert;                              RELEASE SAVEPOINT chronosphere_cve_upsert",
             );
-            Err(err)
+                Err(err)
+            }
         }
     }
-}
 
-fn replace_children
-(&mut self, record: &CveRecord) -> Result<()> {
-        self.conn.execute("DELETE FROM cve_products WHERE cve_id = ?1", params![record.id])?;
-        self.conn.execute("DELETE FROM cve_cwes WHERE cve_id = ?1", params![record.id])?;
-        self.conn.execute("DELETE FROM cve_refs WHERE cve_id = ?1", params![record.id])?;
-        self.conn.execute("DELETE FROM cve_aliases WHERE cve_id = ?1", params![record.id])?;
+    fn replace_children(&mut self, record: &CveRecord) -> Result<()> {
+        self.conn.execute(
+            "DELETE FROM cve_products WHERE cve_id = ?1",
+            params![record.id],
+        )?;
+        self.conn
+            .execute("DELETE FROM cve_cwes WHERE cve_id = ?1", params![record.id])?;
+        self.conn
+            .execute("DELETE FROM cve_refs WHERE cve_id = ?1", params![record.id])?;
+        self.conn.execute(
+            "DELETE FROM cve_aliases WHERE cve_id = ?1",
+            params![record.id],
+        )?;
 
         for p in &record.products {
             self.conn.execute(
@@ -226,9 +234,15 @@ fn replace_children
             .collect::<Vec<_>>()
             .join(" ");
         let cwes = record.cwes.join(" ");
-        let refs_text: String = record.references.iter().map(|r| r.url.as_str()).collect::<Vec<_>>().join(" ");
+        let refs_text: String = record
+            .references
+            .iter()
+            .map(|r| r.url.as_str())
+            .collect::<Vec<_>>()
+            .join(" ");
 
-        self.conn.execute("DELETE FROM cves_fts WHERE id = ?1", params![record.id])?;
+        self.conn
+            .execute("DELETE FROM cves_fts WHERE id = ?1", params![record.id])?;
         self.conn.execute(
             "INSERT INTO cves_fts (id, description, products, cwes, refs_text) VALUES (?1,?2,?3,?4,?5)",
             params![record.id, record.description, products, cwes, refs_text],
@@ -289,13 +303,17 @@ fn replace_children
     }
 
     fn load_cwes(&self, cve_id: &str) -> Result<Vec<String>> {
-        let mut stmt = self.conn.prepare("SELECT cwe FROM cve_cwes WHERE cve_id = ?1")?;
+        let mut stmt = self
+            .conn
+            .prepare("SELECT cwe FROM cve_cwes WHERE cve_id = ?1")?;
         let rows = stmt.query_map(params![cve_id], |r| r.get(0))?;
         rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
     }
 
     fn load_refs(&self, cve_id: &str) -> Result<Vec<CveReference>> {
-        let mut stmt = self.conn.prepare("SELECT url, source, tags FROM cve_refs WHERE cve_id = ?1")?;
+        let mut stmt = self
+            .conn
+            .prepare("SELECT url, source, tags FROM cve_refs WHERE cve_id = ?1")?;
         let rows = stmt.query_map(params![cve_id], |r| {
             let tags_str: String = r.get(2)?;
             Ok(CveReference {
@@ -308,7 +326,9 @@ fn replace_children
     }
 
     fn load_aliases(&self, cve_id: &str) -> Result<Vec<String>> {
-        let mut stmt = self.conn.prepare("SELECT alias_id FROM cve_aliases WHERE cve_id = ?1")?;
+        let mut stmt = self
+            .conn
+            .prepare("SELECT alias_id FROM cve_aliases WHERE cve_id = ?1")?;
         let rows = stmt.query_map(params![cve_id], |r| r.get(0))?;
         rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
     }
@@ -326,7 +346,10 @@ fn replace_children
         Ok(out)
     }
 
-    fn query_ids(stmt: &mut rusqlite::Statement, params_vec: &[rusqlite::types::Value]) -> Result<Vec<String>> {
+    fn query_ids(
+        stmt: &mut rusqlite::Statement,
+        params_vec: &[rusqlite::types::Value],
+    ) -> Result<Vec<String>> {
         let refs = Self::params_as_refs(params_vec);
         let rows = stmt.query_map(refs.as_slice(), |r| r.get::<_, String>(0))?;
         rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
@@ -353,11 +376,11 @@ fn replace_children
         let total: u64 = self
             .conn
             .query_row("SELECT COUNT(*) FROM cves", [], |r| r.get(0))?;
-        let kev_count: u64 = self.conn.query_row(
-            "SELECT COUNT(*) FROM cves WHERE in_kev = 1",
-            [],
-            |r| r.get(0),
-        )?;
+        let kev_count: u64 =
+            self.conn
+                .query_row("SELECT COUNT(*) FROM cves WHERE in_kev = 1", [], |r| {
+                    r.get(0)
+                })?;
         let last_sync: Option<String> = self
             .conn
             .query_row(

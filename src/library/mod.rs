@@ -35,13 +35,17 @@ impl CommandLibrary {
                 }
                 let p = entry.path();
                 if p.extension().map(|e| e == "toml").unwrap_or(false) {
-let file = load_file(p)?;
-validate_file(&file, p)?;
-merge_into(&mut cats, file, p.to_path_buf());
+                    let file = load_file(p)?;
+                    validate_file(&file, p)?;
+                    merge_into(&mut cats, file, p.to_path_buf());
                 }
             }
         }
-        cats.sort_by(|a, b| a.order.cmp(&b.order).then(a.display_name.cmp(&b.display_name)));
+        cats.sort_by(|a, b| {
+            a.order
+                .cmp(&b.order)
+                .then(a.display_name.cmp(&b.display_name))
+        });
         Ok(Self { categories: cats })
     }
 
@@ -62,7 +66,6 @@ merge_into(&mut cats, file, p.to_path_buf());
     }
 }
 
-
 fn validate_file(file: &CategoryFile, path: &Path) -> Result<()> {
     let mut ids = HashSet::new();
     for command in &file.command {
@@ -70,10 +73,18 @@ fn validate_file(file: &CategoryFile, path: &Path) -> Result<()> {
             bail!("{} contains an empty command id", path.display());
         }
         if !ids.insert(command.id.as_str()) {
-            bail!("{} contains duplicate command id '{}'", path.display(), command.id);
+            bail!(
+                "{} contains duplicate command id '{}'",
+                path.display(),
+                command.id
+            );
         }
         if command.title.trim().is_empty() || command.template.trim().is_empty() {
-            bail!("{} command '{}' has an empty title or template", path.display(), command.id);
+            bail!(
+                "{} command '{}' has an empty title or template",
+                path.display(),
+                command.id
+            );
         }
         if !matches!(command.execution.as_str(), "" | "local" | "remote" | "any") {
             bail!(
@@ -96,7 +107,11 @@ fn validate_file(file: &CategoryFile, path: &Path) -> Result<()> {
         }
         for variant in &command.variants {
             if variant.template.trim().is_empty() {
-                bail!("{} command '{}' has an empty variant", path.display(), command.id);
+                bail!(
+                    "{} command '{}' has an empty variant",
+                    path.display(),
+                    command.id
+                );
             }
             if let Some(condition) = &variant.when {
                 crate::render::condition::validate(condition).map_err(|err| {
@@ -246,7 +261,10 @@ test "$out" = "bob"
             .arg(script)
             .status()
             .expect("run bash");
-        assert!(status.success(), "smb harvest parser regression script failed");
+        assert!(
+            status.success(),
+            "smb harvest parser regression script failed"
+        );
     }
 
     fn extract_helper_names(template: &str) -> Vec<String> {
@@ -269,7 +287,10 @@ fn merge_into(cats: &mut Vec<Category>, file: CategoryFile, source: PathBuf) {
         None => {
             cats.push(Category {
                 id: file.category.clone(),
-                display_name: file.display_name.clone().unwrap_or_else(|| file.category.clone()),
+                display_name: file
+                    .display_name
+                    .clone()
+                    .unwrap_or_else(|| file.category.clone()),
                 icon: file.icon.clone(),
                 order: file.order.unwrap_or(100),
                 commands: Vec::new(),

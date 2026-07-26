@@ -12,7 +12,9 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
         crate::vim::Mode::Normal => Theme::accent_bold(),
         crate::vim::Mode::Insert => Theme::success().add_modifier(Modifier::BOLD),
         crate::vim::Mode::Command => Theme::magenta().add_modifier(Modifier::BOLD),
-        crate::vim::Mode::Search | crate::vim::Mode::SearchGlobal => Theme::warn().add_modifier(Modifier::BOLD),
+        crate::vim::Mode::Search | crate::vim::Mode::SearchGlobal => {
+            Theme::warn().add_modifier(Modifier::BOLD)
+        }
     };
 
     let engagement = app
@@ -110,7 +112,10 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
 
     if !prefix.is_empty() {
         spans.push(Span::raw(" │ "));
-        spans.push(Span::styled(prefix, Theme::warn().add_modifier(Modifier::BOLD)));
+        spans.push(Span::styled(
+            prefix,
+            Theme::warn().add_modifier(Modifier::BOLD),
+        ));
     }
 
     if let Some(msg) = &app.flash {

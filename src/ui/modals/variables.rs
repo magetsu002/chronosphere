@@ -23,10 +23,9 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
     };
 
     match &modal.state {
-        VariablesModalState::List {
-            cursor,
-            unset_only,
-        } => render_list(f, inner, app, *cursor, *unset_only),
+        VariablesModalState::List { cursor, unset_only } => {
+            render_list(f, inner, app, *cursor, *unset_only)
+        }
         VariablesModalState::Edit {
             name,
             value,
@@ -43,10 +42,7 @@ fn render_list(f: &mut Frame, area: Rect, app: &App, cursor: usize, unset_only: 
     let items: Vec<ListItem> = rows
         .iter()
         .map(|row| {
-            let is_set = row
-                .value
-                .as_ref()
-                .is_some_and(|v| !v.is_empty());
+            let is_set = row.value.as_ref().is_some_and(|v| !v.is_empty());
             let status = if is_set { "set   " } else { "unset " };
             let val = row
                 .value
@@ -72,17 +68,18 @@ fn render_list(f: &mut Frame, area: Rect, app: &App, cursor: usize, unset_only: 
             } else {
                 Theme::muted()
             };
-            let label = format!(
-                "  {}  {:<18}  {}{}",
-                status, row.name, val_short, tag
-            );
+            let label = format!("  {}  {:<18}  {}{}", status, row.name, val_short, tag);
             ListItem::new(Line::from(Span::styled(label, style)))
         })
         .collect();
 
     let layout = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Length(2), Constraint::Min(3), Constraint::Length(3)])
+        .constraints([
+            Constraint::Length(2),
+            Constraint::Min(3),
+            Constraint::Length(3),
+        ])
         .split(area);
 
     let summary = Paragraph::new(Line::from(vec![
@@ -162,11 +159,7 @@ fn render_edit(
             } else {
                 Theme::accent()
             };
-            let suffix = if i == focused && *editable {
-                "_"
-            } else {
-                ""
-            };
+            let suffix = if i == focused && *editable { "_" } else { "" };
             let display = if *field == VariableEditField::Name && !editable {
                 format!("{:<10} {}", field.label(), val)
             } else {

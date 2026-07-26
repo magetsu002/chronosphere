@@ -24,7 +24,9 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
 
     match &modal.state {
         CredsModalState::List { cursor } => render_list(f, inner, app, modal, *cursor),
-        CredsModalState::Edit { fields, focused, .. } => render_edit(f, inner, fields, *focused),
+        CredsModalState::Edit {
+            fields, focused, ..
+        } => render_edit(f, inner, fields, *focused),
     }
 }
 

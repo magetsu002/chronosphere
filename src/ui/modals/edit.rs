@@ -50,7 +50,10 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
     if show_suggestions {
         let sugg_block = Block::default()
             .borders(Borders::ALL)
-            .title(Span::styled(" path completions (Tab/Shift-Tab) ", Theme::accent_bold()))
+            .title(Span::styled(
+                " path completions (Tab/Shift-Tab) ",
+                Theme::accent_bold(),
+            ))
             .border_style(Theme::border())
             .style(Theme::panel());
         let items: Vec<ListItem> = modal
@@ -68,9 +71,7 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
             .collect();
         let mut state = ListState::default();
         state.select(Some(modal.path_pick.min(items.len().saturating_sub(1))));
-        let list = List::new(items)
-            .block(sugg_block)
-            .highlight_symbol("▶ ");
+        let list = List::new(items).block(sugg_block).highlight_symbol("▶ ");
         f.render_stateful_widget(list, layout[idx], &mut state);
         idx += 1;
     }

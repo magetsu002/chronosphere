@@ -52,19 +52,11 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
 
     let size = crate::config::format_storage_size(modal.db_size_bytes);
     let stats = if modal.db_total > 0 || modal.db_size_bytes > 0 {
-        format!(
-            "{} CVEs · {} KEV · {}",
-            modal.db_total,
-            modal.db_kev,
-            size,
-        )
+        format!("{} CVEs · {} KEV · {}", modal.db_total, modal.db_kev, size,)
     } else {
         "empty index — press s to sync".into()
     };
-    f.render_widget(
-        Paragraph::new(stats).style(Theme::muted()),
-        layout[1],
-    );
+    f.render_widget(Paragraph::new(stats).style(Theme::muted()), layout[1]);
 
     let chips = format!(
         "{}  {} shown  j/k move  Enter detail  y yank  s sync  K KEV{}  Esc close",
@@ -72,10 +64,7 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
         modal.results.len(),
         if modal.kev_only { "✓" } else { "" },
     );
-    f.render_widget(
-        Paragraph::new(chips).style(Theme::muted()),
-        layout[2],
-    );
+    f.render_widget(Paragraph::new(chips).style(Theme::muted()), layout[2]);
 
     let items: Vec<ListItem> = modal
         .results
@@ -83,10 +72,7 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
         .map(|rec| {
             let kev = if rec.in_kev { " KEV" } else { "" };
             let sev = rec.severity.as_deref().unwrap_or("-");
-            let cvss = rec
-                .cvss_v31
-                .map(|s| format!(" {s:.1}"))
-                .unwrap_or_default();
+            let cvss = rec.cvss_v31.map(|s| format!(" {s:.1}")).unwrap_or_default();
             let desc: String = rec.description.chars().take(60).collect();
             ListItem::new(Line::from(vec![
                 Span::styled(format!("{:<18}", rec.id), Theme::accent_bold()),

@@ -1,7 +1,7 @@
 //! Remote execution via scp script upload + ssh run on an active pivot.
 
 use crate::engagement::Pivot;
-use crate::exec::ssh::{remote_script_path, write_remote_script, SshConn};
+use crate::exec::ssh::{SshConn, remote_script_path, write_remote_script};
 use anyhow::Result;
 use std::path::Path;
 

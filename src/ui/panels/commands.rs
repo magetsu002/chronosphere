@@ -8,7 +8,11 @@ use ratatui::widgets::{Block, Borders, List, ListItem, ListState};
 
 pub fn render(f: &mut Frame, area: Rect, app: &App) {
     let is_focused = app.focus == Focus::Commands;
-    let border_style = if is_focused { Theme::border_active() } else { Theme::border() };
+    let border_style = if is_focused {
+        Theme::border_active()
+    } else {
+        Theme::border()
+    };
 
     let title = match app.current_category() {
         Some(c) => format!(" {} ", c.display_name),
@@ -34,10 +38,7 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
                 .iter()
                 .map(|t| Span::styled(format!(" #{}", t), Theme::muted()))
                 .collect();
-            let req_ok = cmd
-                .requires
-                .iter()
-                .all(|t| which::which(t).is_ok());
+            let req_ok = cmd.requires.iter().all(|t| which::which(t).is_ok());
             let req_marker = if cmd.requires.is_empty() {
                 Span::raw("")
             } else if req_ok {

@@ -92,8 +92,7 @@ impl HistoryStore {
     pub fn append(&mut self, record: &JobRecord) -> Result<()> {
         let line = serde_json::to_string(record).context("serialize JobRecord")?;
         let mut guard = self.file.lock().expect("history file mutex");
-        writeln!(guard, "{}", line)
-            .with_context(|| format!("write {}", self.path.display()))?;
+        writeln!(guard, "{}", line).with_context(|| format!("write {}", self.path.display()))?;
         guard.flush().ok();
         drop(guard);
         self.recent.push(record.clone());

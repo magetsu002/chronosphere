@@ -21,10 +21,14 @@ pub async fn sync(options: SyncOptions) -> Result<SyncResult> {
     let client = HttpClient::new(&CveConfig::user_agent())?;
     client.register_provider("nvd", cfg.nvd_interval_ms()).await;
     client.register_provider("kev", 0).await;
-    client.register_provider("osv", cfg.osv.min_interval_ms).await;
+    client
+        .register_provider("osv", cfg.osv.min_interval_ms)
+        .await;
     client.register_provider("epss", 0).await;
     if cfg.circl.enabled {
-        client.register_provider("circl", cfg.circl.min_interval_ms).await;
+        client
+            .register_provider("circl", cfg.circl.min_interval_ms)
+            .await;
     }
 
     let mut store = CveStore::open()?;
@@ -41,7 +45,10 @@ pub async fn sync(options: SyncOptions) -> Result<SyncResult> {
         sync_progress(&options, "cve sync: fetching from NVD…");
         match sync_nvd(&client, &mut store, &mut state, &options, &cfg).await {
             Ok((a, u)) => {
-                sync_progress(&options, &format!("cve sync: NVD done ({a} added, {u} updated)"));
+                sync_progress(
+                    &options,
+                    &format!("cve sync: NVD done ({a} added, {u} updated)"),
+                );
                 result.added += a;
                 result.updated += u;
             }
@@ -65,7 +72,10 @@ pub async fn sync(options: SyncOptions) -> Result<SyncResult> {
         sync_progress(&options, "cve sync: downloading EPSS scores…");
         match epss::sync_epss(&client, &mut store, options.progress).await {
             Ok(n) => {
-                sync_progress(&options, &format!("cve sync: EPSS done ({n} scores merged)"));
+                sync_progress(
+                    &options,
+                    &format!("cve sync: EPSS done ({n} scores merged)"),
+                );
                 tracing::info!(epss = n, "updated EPSS scores");
                 result.updated += n;
             }
@@ -99,7 +109,11 @@ pub async fn sync(options: SyncOptions) -> Result<SyncResult> {
     state.save()?;
 
     let finished = Utc::now().to_rfc3339();
-    let status = if result.errors.is_empty() { "ok" } else { "partial" };
+    let status = if result.errors.is_empty() {
+        "ok"
+    } else {
+        "partial"
+    };
     let err_msg = result.errors.join("; ");
     store.log_sync_run(
         "sync",
@@ -127,14 +141,8 @@ async fn sync_nvd(
 ) -> Result<(u64, u64)> {
     if let Some(ref month) = options.month {
         let api_key = CveConfig::nvd_api_key();
-        return nvd::sync_by_month(
-            client,
-            store,
-            month,
-            api_key.as_deref(),
-            options.progress,
-        )
-        .await;
+        return nvd::sync_by_month(client, store, month, api_key.as_deref(), options.progress)
+            .await;
     }
 
     let mut added = 0u64;
@@ -171,9 +179,13 @@ pub async fn fetch_one(cve_id: &str, enrich: bool) -> Result<Option<CveRecord>> 
     let cfg = CveConfig::load();
     let client = HttpClient::new(&CveConfig::user_agent())?;
     client.register_provider("nvd", cfg.nvd_interval_ms()).await;
-    client.register_provider("osv", cfg.osv.min_interval_ms).await;
+    client
+        .register_provider("osv", cfg.osv.min_interval_ms)
+        .await;
     if cfg.circl.enabled {
-        client.register_provider("circl", cfg.circl.min_interval_ms).await;
+        client
+            .register_provider("circl", cfg.circl.min_interval_ms)
+            .await;
     }
 
     let mut store = CveStore::open()?;

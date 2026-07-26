@@ -21,7 +21,11 @@ pub fn evaluate(expr: &str, ctx: &RenderContext) -> bool {
     match parse(expr) {
         Ok(node) => node.eval(ctx),
         Err(err) => {
-            tracing::warn!(?err, expression = expr, "invalid when-condition; treating as false");
+            tracing::warn!(
+                ?err,
+                expression = expr,
+                "invalid when-condition; treating as false"
+            );
             false
         }
     }
@@ -97,15 +101,15 @@ fn tokenize(s: &str) -> Result<Vec<Tok>, String> {
                 out.push(Tok::Eq);
                 i += 2;
             }
-'&' if i + 1 < bytes.len() && bytes[i + 1] as char == '&' => {
-    out.push(Tok::And);
-    i += 2;
-}
-'|' if i + 1 < bytes.len() && bytes[i + 1] as char == '|' => {
-    out.push(Tok::Or);
-    i += 2;
-}
-'!' if i + 1 < bytes.len() && bytes[i + 1] as char == '=' => {
+            '&' if i + 1 < bytes.len() && bytes[i + 1] as char == '&' => {
+                out.push(Tok::And);
+                i += 2;
+            }
+            '|' if i + 1 < bytes.len() && bytes[i + 1] as char == '|' => {
+                out.push(Tok::Or);
+                i += 2;
+            }
+            '!' if i + 1 < bytes.len() && bytes[i + 1] as char == '=' => {
                 out.push(Tok::Neq);
                 i += 2;
             }
@@ -260,7 +264,9 @@ impl<'a> Parser<'a> {
                                     self.bump();
                                     break;
                                 }
-                                other => return Err(format!("expected ',' or ']', got {:?}", other)),
+                                other => {
+                                    return Err(format!("expected ',' or ']', got {:?}", other));
+                                }
                             }
                         }
                         Ok(Node::In(id, items))
@@ -331,19 +337,16 @@ mod tests {
     fn boolean_logic() {
         let c = ctx_with(CredKind::Plaintext, true);
         assert!(evaluate("creds.kind == 'plaintext' and target.has_dc", &c));
-        assert!(evaluate(
-            "creds.kind == 'kerberos' or target.has_dc",
-            &c
-        ));
-        assert!(!evaluate(
-            "creds.kind == 'kerberos' and target.has_dc",
-            &c
-        ));
+        assert!(evaluate("creds.kind == 'kerberos' or target.has_dc", &c));
+        assert!(!evaluate("creds.kind == 'kerberos' and target.has_dc", &c));
         assert!(evaluate("not (creds.kind == 'kerberos')", &c));
     }
 
     #[test]
     fn parse_errors_fail_closed() {
-        assert!(!evaluate("blah blah blah", &ctx_with(CredKind::Plaintext, false)));
+        assert!(!evaluate(
+            "blah blah blah",
+            &ctx_with(CredKind::Plaintext, false)
+        ));
     }
 }

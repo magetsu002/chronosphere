@@ -24,7 +24,9 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
 
     match &modal.state {
         TargetModalState::List { cursor } => render_list(f, inner, app, modal, *cursor),
-        TargetModalState::Edit { fields, focused, .. } => render_edit(f, inner, fields, *focused),
+        TargetModalState::Edit {
+            fields, focused, ..
+        } => render_edit(f, inner, fields, *focused),
     }
 
     let _ = TargetModal::default;

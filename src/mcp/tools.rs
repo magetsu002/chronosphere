@@ -3,9 +3,7 @@
 //! `result` object the agent can read.
 
 use super::protocol::McpError;
-use crate::engagement::{
-    CredKind, CredentialProfile, Engagement, JobRecord, JobStatus, Target,
-};
+use crate::engagement::{CredKind, CredentialProfile, Engagement, JobRecord, JobStatus, Target};
 use crate::library::CommandLibrary;
 use crate::render::{self, RenderContext};
 use crate::{builtin, config};
@@ -34,28 +32,28 @@ impl State {
     pub fn new(root: PathBuf, engagement_name: Option<String>) -> Result<Self> {
         std::fs::create_dir_all(&root).ok();
         let _ = builtin::ensure_user_dir();
-let engagement = match engagement_name {
-    Some(name) => Some(
-        Engagement::load_named(&root, &name)
-            .with_context(|| format!("load engagement '{}'", name))?,
-    ),
-    None => {
-        let available = Engagement::list(&root);
-        match available.as_slice() {
-            [] => None,
-            [name] => Some(
-                Engagement::load_named(&root, name)
+        let engagement = match engagement_name {
+            Some(name) => Some(
+                Engagement::load_named(&root, &name)
                     .with_context(|| format!("load engagement '{}'", name))?,
             ),
-            _ => {
-                return Err(anyhow!(
-                    "multiple engagements available; start mcp-serve with an explicit engagement: {}",
-                    available.join(", ")
-                ));
+            None => {
+                let available = Engagement::list(&root);
+                match available.as_slice() {
+                    [] => None,
+                    [name] => Some(
+                        Engagement::load_named(&root, name)
+                            .with_context(|| format!("load engagement '{}'", name))?,
+                    ),
+                    _ => {
+                        return Err(anyhow!(
+                            "multiple engagements available; start mcp-serve with an explicit engagement: {}",
+                            available.join(", ")
+                        ));
+                    }
+                }
             }
-        }
-    }
-};
+        };
         let lib_sources = library_sources(&root, engagement.as_ref());
         let paths: Vec<&Path> = lib_sources.iter().map(|p| p.as_path()).collect();
         let library = CommandLibrary::load(&paths).context("load library")?;
@@ -394,7 +392,11 @@ pub fn list_tools() -> Value {
     })
 }
 
-pub async fn dispatch(name: &str, args: Value, state: Arc<Mutex<State>>) -> Result<Value, McpError> {
+pub async fn dispatch(
+    name: &str,
+    args: Value,
+    state: Arc<Mutex<State>>,
+) -> Result<Value, McpError> {
     let result = match name {
         "engagement_info" => tool_engagement_info(state).await,
         "list_categories" => tool_list_categories(state).await,
@@ -602,8 +604,7 @@ async fn tool_show_command(args: Value, state: Arc<Mutex<State>>) -> Result<Valu
         args.creds.as_deref(),
         &extra,
     )?;
-    let tmpl =
-        cmd.applicable_template(&|w| crate::render::condition::evaluate(w, &ctx));
+    let tmpl = cmd.applicable_template(&|w| crate::render::condition::evaluate(w, &ctx));
     let rendered = render::render(tmpl, &ctx).map_err(|e| anyhow!("{}", e))?;
     let redacted = crate::security::redact_command(&rendered.resolved, &ctx);
     Ok(json!({
@@ -631,8 +632,7 @@ async fn tool_render_command(args: Value, state: Arc<Mutex<State>>) -> Result<Va
         args.creds.as_deref(),
         &extra,
     )?;
-    let tmpl =
-        cmd.applicable_template(&|w| crate::render::condition::evaluate(w, &ctx));
+    let tmpl = cmd.applicable_template(&|w| crate::render::condition::evaluate(w, &ctx));
     let rendered = render::render(tmpl, &ctx).map_err(|e| anyhow!("{}", e))?;
     let redacted = crate::security::redact_command(&rendered.resolved, &ctx);
     Ok(json!({
@@ -682,11 +682,9 @@ async fn tool_run_command(args: Value, state: Arc<Mutex<State>>) -> Result<Value
             args.creds.as_deref(),
             &extra,
         )?;
-        let template = command.applicable_template(&|when| {
-            crate::render::condition::evaluate(when, &context)
-        });
-        let rendered = render::render(template, &context)
-            .map_err(|err| anyhow!("{}", err))?;
+        let template =
+            command.applicable_template(&|when| crate::render::condition::evaluate(when, &context));
+        let rendered = render::render(template, &context).map_err(|err| anyhow!("{}", err))?;
         if !rendered.unresolved.is_empty() {
             return Err(anyhow!(
                 "command '{}' has unresolved placeholders: {}",
@@ -696,8 +694,7 @@ async fn tool_run_command(args: Value, state: Arc<Mutex<State>>) -> Result<Value
         }
         let redacted = crate::security::redact_command(&rendered.resolved, &context);
         let job_id = uuid::Uuid::new_v4().to_string();
-        let log_path =
-            Engagement::jobs_dir(&engagement.dir).join(format!("{}.log", job_id));
+        let log_path = Engagement::jobs_dir(&engagement.dir).join(format!("{}.log", job_id));
         (
             rendered.resolved,
             redacted,
@@ -728,20 +725,19 @@ async fn tool_run_command(args: Value, state: Arc<Mutex<State>>) -> Result<Value
             .active_remote()
             .or_else(|| engagement.pivots.active_tunnel())
             .map(|pivot| pivot.name.clone());
-        let execution_label = if engagement.pivots.execution_mode
-            == crate::engagement::ExecutionMode::Remote
-        {
-            format!(
-                "remote@{}",
-                engagement
-                    .pivots
-                    .active_remote()
-                    .map(|pivot| pivot.name.as_str())
-                    .unwrap_or("?")
-            )
-        } else {
-            "local".into()
-        };
+        let execution_label =
+            if engagement.pivots.execution_mode == crate::engagement::ExecutionMode::Remote {
+                format!(
+                    "remote@{}",
+                    engagement
+                        .pivots
+                        .active_remote()
+                        .map(|pivot| pivot.name.as_str())
+                        .unwrap_or("?")
+                )
+            } else {
+                "local".into()
+            };
         let record = JobRecord {
             id: job_id.clone(),
             command_id: Some(command_id.clone()),
@@ -844,12 +840,7 @@ fn update_job(state: &mut State, job_id: &str, status: JobStatus, code: Option<i
     }
 }
 
-fn force_update_job(
-    state: &mut State,
-    job_id: &str,
-    status: JobStatus,
-    code: Option<i32>,
-) {
+fn force_update_job(state: &mut State, job_id: &str, status: JobStatus, code: Option<i32>) {
     if let Some(engagement) = state.engagement.as_mut() {
         if let Some(record) = engagement
             .history
@@ -911,58 +902,54 @@ struct TailArgs {
     lines: Option<usize>,
 }
 
-            async fn tool_tail_job(args: Value, state: Arc<Mutex<State>>) -> Result<Value> {
-                let args: TailArgs = serde_json::from_value(args).map_err(|err| anyhow!("{}", err))?;
-                let lines_requested = args.lines.unwrap_or(200).clamp(1, 5000);
-                let (log_path, status, exit_code, secrets) = {
-                    let state = state.lock().await;
-                    let engagement = state
-                        .engagement
-                        .as_ref()
-                        .ok_or_else(|| anyhow!("no engagement"))?;
-                    let job = engagement
-                        .history
-                        .recent
-                        .iter()
-                        .find(|job| job.id == args.job_id)
-                        .ok_or_else(|| anyhow!("no such job: {}", args.job_id))?;
-                    (
-                        job.log_path.clone(),
-                        job.status,
-                        job.exit_code,
-                        crate::security::store_secrets(
-                            &engagement.profiles,
-                            &engagement.aps,
-                            &engagement.pivots,
-                            &engagement.variables,
-                        ),
-                    )
-                };
-                let body = match log_path {
-                    Some(path) if path.exists() => fs::read_to_string(&path).await.unwrap_or_default(),
-                    _ => String::new(),
-                };
-                let body = crate::security::redact_values(&body, &secrets);
-                let lines: Vec<&str> = body.lines().collect();
-                let start = lines.len().saturating_sub(lines_requested);
-                let tail: Vec<String> = lines[start..]
-                    .iter()
-                    .map(|line| line.to_string())
-                    .collect();
-                Ok(json!({
-                    "job_id": args.job_id,
-                    "status": format!("{:?}", status).to_lowercase(),
-                    "exit_code": exit_code,
-                    "shown_lines": tail.len(),
-                    "total_lines": lines.len(),
-                    "tail": tail.join("
-"),
-                }))
-            }
+async fn tool_tail_job(args: Value, state: Arc<Mutex<State>>) -> Result<Value> {
+    let args: TailArgs = serde_json::from_value(args).map_err(|err| anyhow!("{}", err))?;
+    let lines_requested = args.lines.unwrap_or(200).clamp(1, 5000);
+    let (log_path, status, exit_code, secrets) = {
+        let state = state.lock().await;
+        let engagement = state
+            .engagement
+            .as_ref()
+            .ok_or_else(|| anyhow!("no engagement"))?;
+        let job = engagement
+            .history
+            .recent
+            .iter()
+            .find(|job| job.id == args.job_id)
+            .ok_or_else(|| anyhow!("no such job: {}", args.job_id))?;
+        (
+            job.log_path.clone(),
+            job.status,
+            job.exit_code,
+            crate::security::store_secrets(
+                &engagement.profiles,
+                &engagement.aps,
+                &engagement.pivots,
+                &engagement.variables,
+            ),
+        )
+    };
+    let body = match log_path {
+        Some(path) if path.exists() => fs::read_to_string(&path).await.unwrap_or_default(),
+        _ => String::new(),
+    };
+    let body = crate::security::redact_values(&body, &secrets);
+    let lines: Vec<&str> = body.lines().collect();
+    let start = lines.len().saturating_sub(lines_requested);
+    let tail: Vec<String> = lines[start..].iter().map(|line| line.to_string()).collect();
+    Ok(json!({
+        "job_id": args.job_id,
+        "status": format!("{:?}", status).to_lowercase(),
+        "exit_code": exit_code,
+        "shown_lines": tail.len(),
+        "total_lines": lines.len(),
+        "tail": tail.join("
+    "),
+    }))
+}
 
-            #[derive(Deserialize)]
-            struct GrepArgs
- {
+#[derive(Deserialize)]
+struct GrepArgs {
     job_id: String,
     pattern: String,
     ignore_case: Option<bool>,
@@ -1018,14 +1005,13 @@ async fn tool_grep_job(args: Value, state: Arc<Mutex<State>>) -> Result<Value> {
     Ok(json!({"matches": matches, "count": matches.len()}))
 }
 
-async fn tool_list_jobs
-(args: Value, state: Arc<Mutex<State>>) -> Result<Value> {
-    let limit = args
-        .get("limit")
-        .and_then(|v| v.as_u64())
-        .unwrap_or(20) as usize;
+async fn tool_list_jobs(args: Value, state: Arc<Mutex<State>>) -> Result<Value> {
+    let limit = args.get("limit").and_then(|v| v.as_u64()).unwrap_or(20) as usize;
     let s = state.lock().await;
-    let eng = s.engagement.as_ref().ok_or_else(|| anyhow!("no engagement"))?;
+    let eng = s
+        .engagement
+        .as_ref()
+        .ok_or_else(|| anyhow!("no engagement"))?;
     let mut jobs: Vec<&JobRecord> = eng.history.recent.iter().collect();
     jobs.reverse();
     let truncated: Vec<Value> = jobs
@@ -1058,9 +1044,11 @@ async fn tool_kill_job(args: Value, state: Arc<Mutex<State>>) -> Result<Value> {
         .to_string();
     let pid = {
         let state = state.lock().await;
-        state.running_pids.get(&job_id).copied().ok_or_else(|| {
-            anyhow!("job '{}' is not running in this MCP session", job_id)
-        })?
+        state
+            .running_pids
+            .get(&job_id)
+            .copied()
+            .ok_or_else(|| anyhow!("job '{}' is not running in this MCP session", job_id))?
     };
 
     #[cfg(unix)]
@@ -1091,10 +1079,12 @@ async fn tool_kill_job(args: Value, state: Arc<Mutex<State>>) -> Result<Value> {
     Ok(json!({"job_id": job_id, "status": "cancelled"}))
 }
 
-async fn tool_targets_list
-(state: Arc<Mutex<State>>) -> Result<Value> {
+async fn tool_targets_list(state: Arc<Mutex<State>>) -> Result<Value> {
     let s = state.lock().await;
-    let eng = s.engagement.as_ref().ok_or_else(|| anyhow!("no engagement"))?;
+    let eng = s
+        .engagement
+        .as_ref()
+        .ok_or_else(|| anyhow!("no engagement"))?;
     let active = eng.targets.active().map(|t| t.name.clone());
     let list: Vec<Value> = eng
         .targets
@@ -1129,7 +1119,10 @@ struct TargetsAddArgs {
 async fn tool_targets_add(args: Value, state: Arc<Mutex<State>>) -> Result<Value> {
     let args: TargetsAddArgs = serde_json::from_value(args).map_err(|e| anyhow!("{}", e))?;
     let mut s = state.lock().await;
-    let eng = s.engagement.as_mut().ok_or_else(|| anyhow!("no engagement"))?;
+    let eng = s
+        .engagement
+        .as_mut()
+        .ok_or_else(|| anyhow!("no engagement"))?;
     let activate = args.name.clone();
     eng.targets.upsert(Target {
         name: args.name,
@@ -1152,7 +1145,10 @@ async fn tool_targets_use(args: Value, state: Arc<Mutex<State>>) -> Result<Value
         .ok_or_else(|| anyhow!("missing name"))?
         .to_string();
     let mut s = state.lock().await;
-    let eng = s.engagement.as_mut().ok_or_else(|| anyhow!("no engagement"))?;
+    let eng = s
+        .engagement
+        .as_mut()
+        .ok_or_else(|| anyhow!("no engagement"))?;
     if !eng.targets.set_active(&name) {
         return Err(anyhow!("no target named {}", name));
     }
@@ -1162,7 +1158,10 @@ async fn tool_targets_use(args: Value, state: Arc<Mutex<State>>) -> Result<Value
 
 async fn tool_creds_list(state: Arc<Mutex<State>>) -> Result<Value> {
     let s = state.lock().await;
-    let eng = s.engagement.as_ref().ok_or_else(|| anyhow!("no engagement"))?;
+    let eng = s
+        .engagement
+        .as_ref()
+        .ok_or_else(|| anyhow!("no engagement"))?;
     let active = eng.profiles.active().map(|p| p.name.clone());
     let list: Vec<Value> = eng
         .profiles
@@ -1205,7 +1204,10 @@ async fn tool_creds_add(args: Value, state: Arc<Mutex<State>>) -> Result<Value> 
         other => return Err(anyhow!("unknown kind '{}'", other)),
     };
     let mut s = state.lock().await;
-    let eng = s.engagement.as_mut().ok_or_else(|| anyhow!("no engagement"))?;
+    let eng = s
+        .engagement
+        .as_mut()
+        .ok_or_else(|| anyhow!("no engagement"))?;
     let activate = args.name.clone();
     eng.profiles.upsert(CredentialProfile {
         name: args.name,
@@ -1229,7 +1231,10 @@ async fn tool_creds_use(args: Value, state: Arc<Mutex<State>>) -> Result<Value> 
         .ok_or_else(|| anyhow!("missing name"))?
         .to_string();
     let mut s = state.lock().await;
-    let eng = s.engagement.as_mut().ok_or_else(|| anyhow!("no engagement"))?;
+    let eng = s
+        .engagement
+        .as_mut()
+        .ok_or_else(|| anyhow!("no engagement"))?;
     if !eng.profiles.set_active(&name) {
         return Err(anyhow!("no profile named {}", name));
     }
@@ -1305,10 +1310,7 @@ async fn tool_doctor(args: Value, state: Arc<Mutex<State>>) -> Result<Value> {
     }
 }
 
-fn find_command<'a>(
-    s: &'a State,
-    id: &str,
-) -> Result<(String, &'a crate::library::CommandEntry)> {
+fn find_command<'a>(s: &'a State, id: &str) -> Result<(String, &'a crate::library::CommandEntry)> {
     for cat in &s.library.categories {
         if let Some(cmd) = cat.commands.iter().find(|c| c.id == id) {
             return Ok((cat.id.clone(), cmd));

@@ -1,4 +1,4 @@
-use crate::app::{App, ApEditField, ApModalState, Modal};
+use crate::app::{ApEditField, ApModalState, App, Modal};
 use crate::ui::centered_rect;
 use crate::ui::theme::Theme;
 use ratatui::Frame;
@@ -24,7 +24,9 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
 
     match &modal.state {
         ApModalState::List { cursor } => render_list(f, inner, app, *cursor),
-        ApModalState::Edit { fields, focused, .. } => render_edit(f, inner, fields, *focused),
+        ApModalState::Edit {
+            fields, focused, ..
+        } => render_edit(f, inner, fields, *focused),
     }
 }
 
