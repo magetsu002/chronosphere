@@ -1,0 +1,182 @@
+name: Resolve latest main integration
+
+on:
+  push:
+    branches: [fix/trust-and-reliability-v1]
+
+permissions:
+  contents: write
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/trust-and-reliability-v1
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.88"
+          components: rustfmt, clippy
+      - name: Merge, preserve hardening, and validate
+        shell: bash
+        run: |
+          git config user.name "Chronosphere Hardening"
+          git config user.email "actions@users.noreply.github.com"
+          git fetch origin main
+          git merge -X theirs --no-commit --no-ff origin/main
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          cli = Path("src/cli.rs")
+          source = cli.read_text()
+          old = '''            if dry_run {
+                println!("{}", resolved);
+                return Ok(true);
+            }
+            run_with_history(&root, cli.opts.engagement.as_deref(), &id, &resolved).await?;
+'''
+          new = '''            if dry_run {
+                println!("{}", resolved);
+                return Ok(true);
+            }
+            let unresolved = crate::render::find_unresolved(&resolved);
+            if !unresolved.is_empty() {
+                bail!(
+                    "command '{}' has unresolved placeholders: {}",
+                    id,
+                    unresolved.join(", ")
+                );
+            }
+            run_with_history(&root, cli.opts.engagement.as_deref(), &id, &resolved).await?;
+'''
+          if source.count(old) != 1:
+              raise SystemExit("expected the latest-main CLI run block exactly once")
+          cli.write_text(source.replace(old, new, 1))
+
+          ssh = Path("src/exec/ssh.rs")
+          source = ssh.read_text()
+          old = '''    fn base_cmd(&self, prog: &str, port_flag: &str) -> Command {
+        let mut cmd = if let Some(pw) = &self.password {
+            let mut c = Command::new("sshpass");
+            c.arg("-p").arg(pw).arg(prog);
+            c
+        } else {
+            Command::new(prog)
+        };
+        cmd.arg(port_flag).arg(self.port.to_string());
+        cmd.arg("-o").arg("StrictHostKeyChecking=accept-new");
+        if let Some(id) = &self.identity {
+            cmd.arg("-i").arg(id);
+        }
+        cmd
+    }
+'''
+          new = '''    fn base_cmd(&self, prog: &str, port_flag: &str) -> Command {
+        let mut command = if let Some(password) = &self.password {
+            let mut command = Command::new("sshpass");
+            command.arg("-e").arg(prog);
+            command.env("SSHPASS", password);
+            command
+        } else {
+            Command::new(prog)
+        };
+        command.arg(port_flag).arg(self.port.to_string());
+        command.arg("-o").arg("StrictHostKeyChecking=accept-new");
+        if let Some(identity) = &self.identity {
+            command.arg("-i").arg(identity);
+        }
+        command
+    }
+'''
+          if source.count(old) != 1:
+              raise SystemExit("expected the latest-main SSH deploy constructor exactly once")
+          source = source.replace(old, new, 1)
+
+          marker = '''mod tests {
+    use super::*;
+'''
+          tests = '''mod tests {
+    use super::*;
+
+    #[test]
+    fn deploy_session_keeps_password_out_of_arguments() {
+        let session = SshDeploySession {
+            port: 2222,
+            identity: None,
+            password: Some("s3cret".into()),
+        };
+        let command = session.base_cmd("ssh", "-p");
+        let args: Vec<String> = command
+            .get_args()
+            .map(|arg| arg.to_string_lossy().into_owned())
+            .collect();
+        assert!(!args.iter().any(|arg| arg == "s3cret"));
+        assert_eq!(args.first().map(String::as_str), Some("-e"));
+        assert!(args.iter().any(|arg| arg == "-p"));
+        let password = command
+            .get_envs()
+            .find(|(key, _)| key.to_string_lossy() == "SSHPASS")
+            .and_then(|(_, value)| value)
+            .map(|value| value.to_string_lossy().into_owned());
+        assert_eq!(password.as_deref(), Some("s3cret"));
+    }
+
+    #[test]
+    fn deploy_session_uses_protocol_specific_port_flags() {
+        let session = SshDeploySession {
+            port: 2222,
+            identity: None,
+            password: None,
+        };
+        let ssh_args: Vec<String> = session
+            .base_cmd("ssh", "-p")
+            .get_args()
+            .map(|arg| arg.to_string_lossy().into_owned())
+            .collect();
+        let scp_args: Vec<String> = session
+            .base_cmd("scp", "-P")
+            .get_args()
+            .map(|arg| arg.to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(ssh_args.first().map(String::as_str), Some("-p"));
+        assert_eq!(scp_args.first().map(String::as_str), Some("-P"));
+    }
+'''
+          if source.count(marker) != 1:
+              raise SystemExit("expected SSH test module marker exactly once")
+          ssh.write_text(source.replace(marker, tests, 1))
+          PY
+
+          rm -f .github/main-merge-conflicts.txt .github/main-merge-conflicts.patch
+          rm .github/workflows/resolve-main-integration.yml
+          cargo fmt
+
+          set +e
+          {
+            cargo fmt --check
+            cargo clippy --locked --all-targets --all-features -- -D clippy::correctness -D clippy::suspicious
+            cargo test --locked --all-targets
+            cargo build --locked --release
+          } > /tmp/validation.log 2>&1
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            cat /tmp/validation.log
+            git merge --abort
+            mkdir -p .github
+            cp /tmp/validation.log .github/main-merge-validation.log
+            rm -f .github/workflows/resolve-main-integration.yml
+            git add .github/main-merge-validation.log .github/workflows/resolve-main-integration.yml
+            git commit -m "chore: capture latest main merge validation failure"
+            git push origin HEAD:fix/trust-and-reliability-v1
+            exit 0
+          fi
+
+          git add -A
+          git commit -m "merge: integrate latest main before hardening closeout"
+          git push origin HEAD:fix/trust-and-reliability-v1
