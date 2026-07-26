@@ -6,13 +6,26 @@ on:
       - "v*"
 
 permissions:
-  contents: write
+  contents: read
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.85"
+          components: rustfmt, clippy
+      - run: cargo fmt --check
+      - run: cargo clippy --locked --all-targets --all-features -- -D warnings
+      - run: cargo test --locked --all-targets
+
   build-linux:
+    needs: validate
     name: ${{ matrix.target }}
     runs-on: ubuntu-latest
     strategy:
@@ -26,18 +39,15 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
       - uses: dtolnay/rust-toolchain@stable
         with:
+          toolchain: "1.85"
           targets: ${{ matrix.target }}
-
       - name: Install musl toolchain
         if: contains(matrix.target, 'musl')
         run: sudo apt-get update && sudo apt-get install -y musl-tools
-
       - name: Build release binary
-        run: cargo build --release --target ${{ matrix.target }}
-
+        run: cargo build --locked --release --target ${{ matrix.target }}
       - name: Package archive
         run: |
           install -Dm755 \
@@ -45,7 +55,6 @@ jobs:
             "${{ matrix.archive }}/chronosphere"
           tar -czf "${{ matrix.archive }}.tar.gz" -C "${{ matrix.archive }}" chronosphere
           sha256sum "${{ matrix.archive }}.tar.gz" > "${{ matrix.archive }}.tar.gz.sha256"
-
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.archive }}
@@ -57,12 +66,13 @@ jobs:
     name: Publish GitHub Release
     needs: build-linux
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/download-artifact@v4
         with:
           path: dist
           merge-multiple: true
-
       - uses: softprops/action-gh-release@v2
         with:
           files: dist/**
