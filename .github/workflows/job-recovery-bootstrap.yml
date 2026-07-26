@@ -7,6 +7,10 @@ on:
 permissions:
   contents: write
 
+env:
+  CARGO_TERM_COLOR: never
+  CARGO_TERM_QUIET: "true"
+
 concurrency:
   group: chronosphere-job-recovery-bootstrap
   cancel-in-progress: true
@@ -26,6 +30,7 @@ jobs:
           toolchain: "1.88"
           components: rustfmt, clippy
       - name: Build and validate milestones
+        id: implementation
         shell: bash
         run: |
           set +e
@@ -38,19 +43,19 @@ jobs:
           } > /tmp/job-recovery.log 2>&1
           status=$?
           set -e
-          if [ "$status" -ne 0 ]; then
-            tail -n 160 /tmp/job-recovery.log
-            git cherry-pick --abort 2>/dev/null || true
-            git reset --hard
-            git switch -C chore/job-recovery-failure origin/chore/job-recovery-failure
-            mkdir -p .github/job-recovery-failures
-            report=".github/job-recovery-failures/${GITHUB_RUN_ID}.txt"
-            cp /tmp/job-recovery.log "$report"
-            git add "$report"
-            git commit -m "chore: capture job recovery failure ${GITHUB_RUN_ID}"
-            git push origin HEAD:chore/job-recovery-failure
-            exit "$status"
-          fi
-          tail -n 100 /tmp/job-recovery.log
+          echo "status=${status}" >> "$GITHUB_OUTPUT"
+          tail -n 200 /tmp/job-recovery.log
+          exit 0
+      - name: Upload implementation log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: job-recovery-implementation-log-${{ github.run_id }}
+          path: /tmp/job-recovery.log
+          if-no-files-found: error
+          retention-days: 7
+      - name: Enforce implementation result
+        if: steps.implementation.outputs.status != '0'
+        run: exit 1
 
-# Use a run-specific failure report so every blocker remains observable.
+# Capture exact implementation output as an artifact before enforcing failure.
