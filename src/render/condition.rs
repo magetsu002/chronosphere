@@ -251,7 +251,9 @@ impl<'a> Parser<'a> {
                                     self.bump();
                                     break;
                                 }
-                                other => return Err(format!("expected ',' or ']', got {:?}", other)),
+                                other => {
+                                    return Err(format!("expected ',' or ']', got {:?}", other));
+                                }
                             }
                         }
                         Ok(Node::In(id, items))
@@ -322,19 +324,16 @@ mod tests {
     fn boolean_logic() {
         let c = ctx_with(CredKind::Plaintext, true);
         assert!(evaluate("creds.kind == 'plaintext' and target.has_dc", &c));
-        assert!(evaluate(
-            "creds.kind == 'kerberos' or target.has_dc",
-            &c
-        ));
-        assert!(!evaluate(
-            "creds.kind == 'kerberos' and target.has_dc",
-            &c
-        ));
+        assert!(evaluate("creds.kind == 'kerberos' or target.has_dc", &c));
+        assert!(!evaluate("creds.kind == 'kerberos' and target.has_dc", &c));
         assert!(evaluate("not (creds.kind == 'kerberos')", &c));
     }
 
     #[test]
     fn parse_errors_fail_open() {
-        assert!(evaluate("blah blah blah", &ctx_with(CredKind::Plaintext, false)));
+        assert!(evaluate(
+            "blah blah blah",
+            &ctx_with(CredKind::Plaintext, false)
+        ));
     }
 }

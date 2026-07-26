@@ -5,17 +5,17 @@ use crate::engagement::{
     Pivot, Target,
 };
 use crate::exec::{Executor, FocusResult, SpawnRequest};
-use crate::input::{apply_to_string, apply_to_textarea, text_edit_action, TextEditAction};
+use crate::input::{TextEditAction, apply_to_string, apply_to_textarea, text_edit_action};
 use crate::library::{CategoryFile, CommandEntry, CommandLibrary, CommandVariant};
 use crate::render::{self, RenderContext};
+use crate::ui::layout::{HitRegions, StatusBarAction, scroll_by};
 use crate::ui::{self, splash::SplashState};
-use crate::ui::layout::{scroll_by, HitRegions, StatusBarAction};
 use crate::vim::{Action, KeyParser, Mode};
 
 use anyhow::{Context, Result};
 use crossterm::event::{
-    DisableMouseCapture, EnableMouseCapture, Event, EventStream, KeyboardEnhancementFlags,
-    KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseButton, MouseEvent, MouseEventKind,
+    DisableMouseCapture, EnableMouseCapture, Event, EventStream, KeyCode, KeyEvent, KeyEventKind,
+    KeyModifiers, KeyboardEnhancementFlags, MouseButton, MouseEvent, MouseEventKind,
     PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags,
 };
 use crossterm::execute;
@@ -582,14 +582,15 @@ pub struct AppBoot {
 
 impl App {
     pub async fn new(boot: AppBoot) -> Result<Self> {
-        let engagements_root = boot
-            .root
-            .clone()
-            .unwrap_or_else(config::engagements_root);
+        let engagements_root = boot.root.clone().unwrap_or_else(config::engagements_root);
         let library_sources = collect_library_sources(None);
-        let library =
-            CommandLibrary::load(&library_sources.iter().map(|p| p.as_path()).collect::<Vec<_>>())
-                .context("load command library")?;
+        let library = CommandLibrary::load(
+            &library_sources
+                .iter()
+                .map(|p| p.as_path())
+                .collect::<Vec<_>>(),
+        )
+        .context("load command library")?;
 
         let mut app = Self {
             library,
@@ -641,8 +642,7 @@ impl App {
             PushKeyboardEnhancementFlags(KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES)
         )
         .ok();
-        execute!(stdout, EnterAlternateScreen, EnableMouseCapture)
-            .context("enter alt screen")?;
+        execute!(stdout, EnterAlternateScreen, EnableMouseCapture).context("enter alt screen")?;
         let backend = CrosstermBackend::new(stdout);
         let mut terminal = Terminal::new(backend).context("init terminal")?;
 
@@ -999,12 +999,20 @@ impl App {
             _ => return,
         };
         if delta > 0 && at_bottom && has_next {
-            let next = if let Modal::Cve(m) = &self.modal { m.page + 1 } else { 0 };
+            let next = if let Modal::Cve(m) = &self.modal {
+                m.page + 1
+            } else {
+                0
+            };
             self.load_cve_modal_page(next, false);
             return;
         }
         if delta < 0 && at_top && has_prev {
-            let prev = if let Modal::Cve(m) = &self.modal { m.page - 1 } else { 0 };
+            let prev = if let Modal::Cve(m) = &self.modal {
+                m.page - 1
+            } else {
+                0
+            };
             self.load_cve_modal_page(prev, true);
             return;
         }
@@ -1108,13 +1116,7 @@ impl App {
         let Some(token) = crate::path_complete::token_at_cursor(&line, col as usize) else {
             return;
         };
-        crate::path_complete::replace_token(
-            &mut em.textarea,
-            row,
-            token.start,
-            token.end,
-            &choice,
-        );
+        crate::path_complete::replace_token(&mut em.textarea, row, token.start, token.end, &choice);
     }
 
     fn scroll_edit_textarea(&mut self, delta: i32) {
@@ -1399,11 +1401,9 @@ impl App {
     fn activate_target_modal(&mut self) {
         let name = match (&self.modal, self.engagement.as_ref()) {
             (Modal::Target(m), Some(eng)) => match &m.state {
-                TargetModalState::List { cursor } => eng
-                    .targets
-                    .targets
-                    .get(*cursor)
-                    .map(|t| t.name.clone()),
+                TargetModalState::List { cursor } => {
+                    eng.targets.targets.get(*cursor).map(|t| t.name.clone())
+                }
                 _ => None,
             },
             _ => None,
@@ -1418,9 +1418,7 @@ impl App {
     fn activate_ap_modal(&mut self) {
         let name = match (&self.modal, self.engagement.as_ref()) {
             (Modal::Ap(m), Some(eng)) => match &m.state {
-                ApModalState::List { cursor } => {
-                    eng.aps.aps.get(*cursor).map(|a| a.name.clone())
-                }
+                ApModalState::List { cursor } => eng.aps.aps.get(*cursor).map(|a| a.name.clone()),
                 _ => None,
             },
             _ => None,
@@ -1435,11 +1433,9 @@ impl App {
     fn activate_pivot_modal(&mut self) {
         let name = match (&self.modal, self.engagement.as_ref()) {
             (Modal::Pivot(m), Some(eng)) => match &m.state {
-                PivotModalState::List { cursor } => eng
-                    .pivots
-                    .pivots
-                    .get(*cursor)
-                    .map(|p| p.name.clone()),
+                PivotModalState::List { cursor } => {
+                    eng.pivots.pivots.get(*cursor).map(|p| p.name.clone())
+                }
                 _ => None,
             },
             _ => None,
@@ -1455,11 +1451,9 @@ impl App {
     fn activate_creds_modal(&mut self) {
         let name = match (&self.modal, self.engagement.as_ref()) {
             (Modal::Creds(m), Some(eng)) => match &m.state {
-                CredsModalState::List { cursor } => eng
-                    .profiles
-                    .profiles
-                    .get(*cursor)
-                    .map(|p| p.name.clone()),
+                CredsModalState::List { cursor } => {
+                    eng.profiles.profiles.get(*cursor).map(|p| p.name.clone())
+                }
                 _ => None,
             },
             _ => None,
@@ -1545,7 +1539,10 @@ impl App {
             return;
         }
         if matches!(self.modal, Modal::Help(_) | Modal::Tools(_)) {
-            if matches!(ke.code, KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('?')) {
+            if matches!(
+                ke.code,
+                KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('?')
+            ) {
                 self.modal = Modal::None;
                 self.key_parser.reset();
                 return;
@@ -1629,8 +1626,7 @@ impl App {
                 if len == 0 {
                     return;
                 }
-                let new = (self.selected_category as i32 + delta)
-                    .clamp(0, len as i32 - 1) as usize;
+                let new = (self.selected_category as i32 + delta).clamp(0, len as i32 - 1) as usize;
                 if new != self.selected_category {
                     self.selected_category = new;
                     self.selected_command = 0;
@@ -1747,7 +1743,10 @@ impl App {
                 self.commit_search_selection();
             }
             KeyCode::Down => {
-                if let Modal::Search { matches, cursor, .. } = &mut self.modal {
+                if let Modal::Search {
+                    matches, cursor, ..
+                } = &mut self.modal
+                {
                     if !matches.is_empty() && *cursor + 1 < matches.len() {
                         *cursor += 1;
                     }
@@ -1772,8 +1771,11 @@ impl App {
 
     fn recompute_search(&mut self, global: bool) {
         let mut matcher = Matcher::new(nucleo_matcher::Config::DEFAULT.match_paths());
-        let pattern =
-            Pattern::parse(&self.search_buf, nucleo_matcher::pattern::CaseMatching::Smart, nucleo_matcher::pattern::Normalization::Smart);
+        let pattern = Pattern::parse(
+            &self.search_buf,
+            nucleo_matcher::pattern::CaseMatching::Smart,
+            nucleo_matcher::pattern::Normalization::Smart,
+        );
         let mut hits: Vec<(u16, SearchHit)> = Vec::new();
         let categories: Vec<_> = if global {
             self.library.categories.iter().collect()
@@ -1806,14 +1808,14 @@ impl App {
         hits.sort_by(|a, b| b.0.cmp(&a.0));
         let matches: Vec<SearchHit> = hits.into_iter().map(|(_, h)| h).collect();
         let _ = global;
-        self.modal = Modal::Search {
-            matches,
-            cursor: 0,
-        };
+        self.modal = Modal::Search { matches, cursor: 0 };
     }
 
     fn commit_search_selection(&mut self) {
-        let selection = if let Modal::Search { matches, cursor, .. } = &self.modal {
+        let selection = if let Modal::Search {
+            matches, cursor, ..
+        } = &self.modal
+        {
             matches.get(*cursor).cloned()
         } else {
             None
@@ -1952,7 +1954,14 @@ impl App {
                 return;
             }
         };
-        if let Err(err) = self.write_override(&category_id, &name, &title, &resolved, interactive, source.as_deref()) {
+        if let Err(err) = self.write_override(
+            &category_id,
+            &name,
+            &title,
+            &resolved,
+            interactive,
+            source.as_deref(),
+        ) {
             self.flash_error(format!("save failed: {}", err));
         } else {
             self.flash_ok(format!("saved {}:{}", category_id, name));
@@ -2163,7 +2172,8 @@ impl App {
         self.reload_library();
         if downgraded_remote {
             self.flash_error(
-                "saved remote exec was not configured — set pivot SSH auth, then :exec remote".into(),
+                "saved remote exec was not configured — set pivot SSH auth, then :exec remote"
+                    .into(),
             );
         }
     }
@@ -2171,7 +2181,11 @@ impl App {
     fn try_open_engagement_by_name(&mut self, name: &str) {
         let dir = self.engagements_root.join(name);
         if !dir.exists() || !Engagement::meta_path(&dir).exists() {
-            self.flash_error(format!("engagement '{}' not found under {}", name, self.engagements_root.display()));
+            self.flash_error(format!(
+                "engagement '{}' not found under {}",
+                name,
+                self.engagements_root.display()
+            ));
             return;
         }
         match Engagement::load(dir) {
@@ -2207,7 +2221,9 @@ impl App {
     // target modal
     fn open_target_modal(&mut self, rest: &[&str]) {
         if self.engagement.is_none() {
-            self.flash_error("create or switch to an engagement first (:engagement new <name>)".into());
+            self.flash_error(
+                "create or switch to an engagement first (:engagement new <name>)".into(),
+            );
             return;
         }
         if let Some(name) = rest.first() {
@@ -2228,7 +2244,9 @@ impl App {
 
     fn open_ap_modal(&mut self, rest: &[&str]) {
         if self.engagement.is_none() {
-            self.flash_error("create or switch to an engagement first (:engagement new <name>)".into());
+            self.flash_error(
+                "create or switch to an engagement first (:engagement new <name>)".into(),
+            );
             return;
         }
         if let Some(name) = rest.first() {
@@ -2367,7 +2385,9 @@ impl App {
 
     fn open_pivot_modal(&mut self, rest: &[&str]) {
         if self.engagement.is_none() {
-            self.flash_error("create or switch to an engagement first (:engagement new <name>)".into());
+            self.flash_error(
+                "create or switch to an engagement first (:engagement new <name>)".into(),
+            );
             return;
         }
         if let Some(spec) = rest.first() {
@@ -2503,7 +2523,9 @@ impl App {
                     }
                     KeyCode::Enter => {
                         if let Some(eng) = eng {
-                            if let Some(name) = eng.pivots.pivots.get(*cursor).map(|p| p.name.clone()) {
+                            if let Some(name) =
+                                eng.pivots.pivots.get(*cursor).map(|p| p.name.clone())
+                            {
                                 eng.pivots.set_active_tunnel(&name);
                                 eng.pivots.set_active_remote(&name);
                                 let _ = eng.save_pivots();
@@ -2546,7 +2568,9 @@ impl App {
                     }
                     KeyCode::Char('t') => {
                         if let Some(eng) = eng {
-                            if let Some(name) = eng.pivots.pivots.get(*cursor).map(|p| p.name.clone()) {
+                            if let Some(name) =
+                                eng.pivots.pivots.get(*cursor).map(|p| p.name.clone())
+                            {
                                 eng.pivots.set_active_tunnel(&name);
                                 let _ = eng.save_pivots();
                                 self.flash_ok(format!("tunnel: {}", name));
@@ -2555,7 +2579,9 @@ impl App {
                     }
                     KeyCode::Char('r') => {
                         if let Some(eng) = eng {
-                            if let Some(name) = eng.pivots.pivots.get(*cursor).map(|p| p.name.clone()) {
+                            if let Some(name) =
+                                eng.pivots.pivots.get(*cursor).map(|p| p.name.clone())
+                            {
                                 eng.pivots.set_active_remote(&name);
                                 let _ = eng.save_pivots();
                                 self.flash_ok(format!("remote: {}", name));
@@ -2646,7 +2672,9 @@ impl App {
                     }
                     KeyCode::Enter => {
                         if let Some(eng) = eng {
-                            if let Some(name) = eng.targets.targets.get(*cursor).map(|t| t.name.clone()) {
+                            if let Some(name) =
+                                eng.targets.targets.get(*cursor).map(|t| t.name.clone())
+                            {
                                 eng.targets.set_active(&name);
                                 let _ = eng.save_targets();
                             }
@@ -2758,13 +2786,16 @@ impl App {
 
     fn open_variables_modal(&mut self, rest: &[&str]) {
         if self.engagement.is_none() {
-            self.flash_error("create or switch to an engagement first (:engagement new <name>)".into());
+            self.flash_error(
+                "create or switch to an engagement first (:engagement new <name>)".into(),
+            );
             return;
         }
         if let Some(spec) = rest.first() {
             if let Some((name, value)) = spec.split_once('=') {
                 if let Some(eng) = self.engagement.as_mut() {
-                    eng.variables.set(name.trim().to_string(), value.to_string());
+                    eng.variables
+                        .set(name.trim().to_string(), value.to_string());
                     let _ = eng.save_variables();
                     self.flash_ok(format!("{}={}", name.trim(), value));
                 }
@@ -2784,10 +2815,7 @@ impl App {
             _ => return,
         };
         match &mut state {
-            VariablesModalState::List {
-                cursor,
-                unset_only,
-            } => {
+            VariablesModalState::List { cursor, unset_only } => {
                 let rows = self.variable_rows(*unset_only);
                 let len = rows.len();
                 match ke.code {
@@ -2936,12 +2964,7 @@ impl App {
                 candidates[0].clone()
             }
         };
-        *value = format!(
-            "{}{}{}",
-            &line[..token.start],
-            choice,
-            &line[token.end..]
-        );
+        *value = format!("{}{}{}", &line[..token.start], choice, &line[token.end..]);
     }
 
     // creds modal
@@ -2988,7 +3011,9 @@ impl App {
                     }
                     KeyCode::Enter => {
                         if let Some(eng) = eng {
-                            if let Some(name) = eng.profiles.profiles.get(*cursor).map(|p| p.name.clone()) {
+                            if let Some(name) =
+                                eng.profiles.profiles.get(*cursor).map(|p| p.name.clone())
+                            {
                                 eng.profiles.set_active(&name);
                                 let _ = eng.save_profiles();
                             }
@@ -3094,7 +3119,8 @@ impl App {
             None => {
                 if self.visible_commands().is_empty() {
                     self.flash_error(
-                        "no runnable commands in this category (check filters, target, creds)".into(),
+                        "no runnable commands in this category (check filters, target, creds)"
+                            .into(),
                     );
                 } else {
                     self.flash_error("no command selected — move cursor (j/k) to a command".into());
@@ -3107,7 +3133,8 @@ impl App {
             None => return,
         };
         let ctx = self.render_context();
-        let template = cmd.applicable_template(&|w: &str| crate::render::condition::evaluate(w, &ctx));
+        let template =
+            cmd.applicable_template(&|w: &str| crate::render::condition::evaluate(w, &ctx));
         let rendered = match render::render(template, &ctx) {
             Ok(r) => r,
             Err(err) => {
@@ -3136,9 +3163,7 @@ impl App {
             let ctx = self.render_context();
             cat.commands
                 .iter()
-                .filter(|c| {
-                    c.is_applicable(&|w: &str| crate::render::condition::evaluate(w, &ctx))
-                })
+                .filter(|c| c.is_applicable(&|w: &str| crate::render::condition::evaluate(w, &ctx)))
                 .filter(|c| {
                     if ctx.execution_mode == ExecutionMode::Local {
                         c.allows_local()
@@ -3210,9 +3235,7 @@ impl App {
                 return;
             };
             let target = engagement.active_target().map(|t| t.name.as_str());
-            if let Err(err) =
-                crate::exec::ssh::resolve_ssh_auth(pivot, &engagement.dir, target)
-            {
+            if let Err(err) = crate::exec::ssh::resolve_ssh_auth(pivot, &engagement.dir, target) {
                 self.flash_error(format!("remote SSH not ready: {err}"));
                 return;
             }
@@ -3220,12 +3243,7 @@ impl App {
         let pivot_name = remote_pivot
             .as_ref()
             .map(|p| p.name.clone())
-            .or_else(|| {
-                engagement
-                    .pivots
-                    .active_tunnel()
-                    .map(|p| p.name.clone())
-            });
+            .or_else(|| engagement.pivots.active_tunnel().map(|p| p.name.clone()));
         let execution_label = if execution_mode == ExecutionMode::Remote {
             format!(
                 "remote@{}",
@@ -3272,7 +3290,8 @@ impl App {
             None => return,
         };
         let ctx = self.render_context();
-        let template = cmd.applicable_template(&|w: &str| crate::render::condition::evaluate(w, &ctx));
+        let template =
+            cmd.applicable_template(&|w: &str| crate::render::condition::evaluate(w, &ctx));
         let rendered = match render::render(template, &ctx) {
             Ok(r) => r,
             Err(err) => {
@@ -3280,7 +3299,8 @@ impl App {
                 return;
             }
         };
-        let mut ta = tui_textarea::TextArea::new(rendered.resolved.lines().map(|l| l.to_string()).collect());
+        let mut ta =
+            tui_textarea::TextArea::new(rendered.resolved.lines().map(|l| l.to_string()).collect());
         ta.set_line_number_style(crate::ui::theme::Theme::muted());
         ta.set_block(
             ratatui::widgets::Block::default()
@@ -3349,8 +3369,7 @@ impl App {
                         em.path_suggestions.clear();
                         None
                     } else {
-                        let lcp =
-                            crate::path_complete::longest_common_prefix(&em.path_suggestions);
+                        let lcp = crate::path_complete::longest_common_prefix(&em.path_suggestions);
                         if lcp.len() > token.text.len() {
                             crate::path_complete::replace_token(
                                 &mut em.textarea,
@@ -3409,8 +3428,8 @@ impl App {
             cmd.template.clone()
         } else {
             let ctx = self.render_context();
-            let template = cmd
-                .applicable_template(&|w: &str| crate::render::condition::evaluate(w, &ctx));
+            let template =
+                cmd.applicable_template(&|w: &str| crate::render::condition::evaluate(w, &ctx));
             match render::render(template, &ctx) {
                 Ok(r) => r.resolved,
                 Err(err) => {
@@ -3421,7 +3440,9 @@ impl App {
         };
         match clipboard::copy_report(&text) {
             Ok(r) if r.any() => self.flash_ok(clipboard::format_yank_message(&r)),
-            Ok(_) => self.flash_error("yank failed — install xclip or wl-clipboard on Linux".into()),
+            Ok(_) => {
+                self.flash_error("yank failed — install xclip or wl-clipboard on Linux".into())
+            }
             Err(err) => self.flash_error(format!("clipboard: {}", err)),
         }
     }
@@ -3589,7 +3610,12 @@ impl App {
         }
     }
 
-    fn cve_filter(query: &str, kev_only: bool, poc_only: bool, page: usize) -> crate::cve::CveFilter {
+    fn cve_filter(
+        query: &str,
+        kev_only: bool,
+        poc_only: bool,
+        page: usize,
+    ) -> crate::cve::CveFilter {
         let q = query.trim();
         crate::cve::CveFilter {
             query: if q.is_empty() {
@@ -3777,7 +3803,11 @@ impl App {
                     _ => false,
                 };
                 if advance {
-                    let next = if let Modal::Cve(m) = &self.modal { m.page + 1 } else { 0 };
+                    let next = if let Modal::Cve(m) = &self.modal {
+                        m.page + 1
+                    } else {
+                        0
+                    };
                     self.load_cve_modal_page(next, false);
                 }
             }
@@ -3795,7 +3825,11 @@ impl App {
                     _ => false,
                 };
                 if retreat {
-                    let prev = if let Modal::Cve(m) = &self.modal { m.page - 1 } else { 0 };
+                    let prev = if let Modal::Cve(m) = &self.modal {
+                        m.page - 1
+                    } else {
+                        0
+                    };
                     self.load_cve_modal_page(prev, true);
                 }
             }
@@ -3898,7 +3932,9 @@ impl App {
                         }
                         self.flash_ok(format!("attach cmd yanked: {}", cmd));
                     }
-                    Ok(FocusResult::Unfocusable) => self.flash_error("job has no tmux window".into()),
+                    Ok(FocusResult::Unfocusable) => {
+                        self.flash_error("job has no tmux window".into())
+                    }
                     Err(_) => self.flash_error(format!("open job: {}", err)),
                 }
             }
@@ -3954,22 +3990,21 @@ impl App {
     fn setup_library_watcher(&mut self) {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<()>();
         let watcher_tx = tx.clone();
-        let mut w: notify::RecommendedWatcher = match notify::recommended_watcher(
-            move |res: notify::Result<notify::Event>| {
+        let mut w: notify::RecommendedWatcher =
+            match notify::recommended_watcher(move |res: notify::Result<notify::Event>| {
                 if let Ok(ev) = res {
                     use notify::EventKind::*;
                     if matches!(ev.kind, Modify(_) | Create(_) | Remove(_)) {
                         let _ = watcher_tx.send(());
                     }
                 }
-            },
-        ) {
-            Ok(w) => w,
-            Err(err) => {
-                tracing::warn!(?err, "could not create library watcher");
-                return;
-            }
-        };
+            }) {
+                Ok(w) => w,
+                Err(err) => {
+                    tracing::warn!(?err, "could not create library watcher");
+                    return;
+                }
+            };
         use notify::Watcher;
         for src in &self.library_sources {
             if src.exists() {
@@ -3981,7 +4016,8 @@ impl App {
     }
 
     fn reload_library(&mut self) {
-        let paths: Vec<&std::path::Path> = self.library_sources.iter().map(|p| p.as_path()).collect();
+        let paths: Vec<&std::path::Path> =
+            self.library_sources.iter().map(|p| p.as_path()).collect();
         match CommandLibrary::load(&paths) {
             Ok(lib) => {
                 self.library = lib;
@@ -4061,10 +4097,7 @@ impl App {
         use crate::render::placeholders::collect_library_custom_placeholders;
         use std::collections::BTreeSet;
 
-        let needed: BTreeSet<String> = self
-            .current_command_unresolved_vars()
-            .into_iter()
-            .collect();
+        let needed: BTreeSet<String> = self.current_command_unresolved_vars().into_iter().collect();
         let library = collect_library_custom_placeholders(&self.library);
         let mut names: BTreeSet<String> = library.clone();
         if let Some(eng) = &self.engagement {
@@ -4256,10 +4289,7 @@ fn pivot_to_fields(p: &Pivot) -> Vec<(PivotEditField, String)> {
                 PivotEditField::Name => p.name.clone(),
                 PivotEditField::SshHost => p.ssh_host.clone().unwrap_or_default(),
                 PivotEditField::SshUser => p.ssh_user.clone().unwrap_or_default(),
-                PivotEditField::SshPort => p
-                    .ssh_port
-                    .map(|n| n.to_string())
-                    .unwrap_or_default(),
+                PivotEditField::SshPort => p.ssh_port.map(|n| n.to_string()).unwrap_or_default(),
                 PivotEditField::SshIdentity => p.ssh_identity.clone().unwrap_or_default(),
                 PivotEditField::SshPassword => p.ssh_password.clone().unwrap_or_default(),
                 PivotEditField::LigoloIface => p.ligolo_interface.clone().unwrap_or_default(),

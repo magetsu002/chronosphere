@@ -28,7 +28,10 @@ fn build_detail_lines(modal: &CveModal) -> Vec<Line<'static>> {
     };
 
     let mut lines: Vec<Line> = Vec::new();
-    lines.push(Line::from(Span::styled(rec.id.clone(), Theme::accent_bold())));
+    lines.push(Line::from(Span::styled(
+        rec.id.clone(),
+        Theme::accent_bold(),
+    )));
     if let Some(s) = &rec.severity {
         let cvss = rec
             .cvss_v31
@@ -159,19 +162,11 @@ pub fn render(
 
     let size = crate::config::format_storage_size(modal.db_size_bytes);
     let stats = if modal.db_total > 0 || modal.db_size_bytes > 0 {
-        format!(
-            "{} CVEs · {} KEV · {}",
-            modal.db_total,
-            modal.db_kev,
-            size,
-        )
+        format!("{} CVEs · {} KEV · {}", modal.db_total, modal.db_kev, size,)
     } else {
         "empty index — press s to sync".into()
     };
-    f.render_widget(
-        Paragraph::new(stats).style(Theme::muted()),
-        layout[1],
-    );
+    f.render_widget(Paragraph::new(stats).style(Theme::muted()), layout[1]);
 
     let total_pages = modal.total_pages();
     let page_start = if modal.results.is_empty() {
@@ -197,10 +192,7 @@ pub fn render(
         if modal.kev_only { "✓" } else { "" },
         if modal.poc_only { "✓" } else { "" },
     );
-    f.render_widget(
-        Paragraph::new(chips).style(Theme::muted()),
-        layout[2],
-    );
+    f.render_widget(Paragraph::new(chips).style(Theme::muted()), layout[2]);
 
     let items: Vec<ListItem> = modal
         .results
@@ -211,10 +203,7 @@ pub fn render(
                 .map(|e| format!(" {}", e.badge()))
                 .unwrap_or_default();
             let sev = rec.severity.as_deref().unwrap_or("-");
-            let cvss = rec
-                .cvss_v31
-                .map(|s| format!(" {s:.1}"))
-                .unwrap_or_default();
+            let cvss = rec.cvss_v31.map(|s| format!(" {s:.1}")).unwrap_or_default();
             let desc: String = rec.description.chars().take(60).collect();
             ListItem::new(Line::from(vec![
                 Span::styled(format!("{:<18}", rec.id), Theme::accent_bold()),

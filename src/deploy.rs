@@ -10,7 +10,7 @@
 //! We deliberately avoid linking an SSH library (libssh2/russh) to keep the
 //! binary small for Pwnbox use — calling out to ssh/scp is universally available.
 
-use crate::exec::ssh::{shell_escape, SshDeploySession};
+use crate::exec::ssh::{SshDeploySession, shell_escape};
 use anyhow::{Context, Result, bail};
 use clap::Args;
 use std::io::Write;
@@ -69,15 +69,26 @@ pub fn run(args: DeployArgs) -> Result<()> {
     let auth = resolve_auth(&args)?;
     let host_spec = host_spec(&args);
 
-    println!("[chronosphere] deploying {} → {}:{}", binary.display(), host_spec.display, args.remote_path);
+    println!(
+        "[chronosphere] deploying {} → {}:{}",
+        binary.display(),
+        host_spec.display,
+        args.remote_path
+    );
 
     let remote_tmp = "/tmp/chronosphere.deploy";
 
     if args.dry_run {
         println!("[dry-run] scp {} :{}", binary.display(), remote_tmp);
-        println!("[dry-run] ssh {} 'install {} → {}'", host_spec.display, remote_tmp, args.remote_path);
+        println!(
+            "[dry-run] ssh {} 'install {} → {}'",
+            host_spec.display, remote_tmp, args.remote_path
+        );
         if !args.no_extract {
-            println!("[dry-run] ssh {} '{} update-templates --force'", host_spec.display, args.remote_path);
+            println!(
+                "[dry-run] ssh {} '{} update-templates --force'",
+                host_spec.display, args.remote_path
+            );
         }
         return Ok(());
     }
@@ -101,8 +112,14 @@ pub fn run(args: DeployArgs) -> Result<()> {
     ssh.run_ssh(&host_spec.target, &version_cmd)?;
 
     println!("[chronosphere] deploy complete. Try:");
-    println!("    ssh {} {} list categories", host_spec.display, args.remote_path);
-    println!("    ssh {} {} mcp-serve   # (the MCP endpoint for cursor-agent)", host_spec.display, args.remote_path);
+    println!(
+        "    ssh {} {} list categories",
+        host_spec.display, args.remote_path
+    );
+    println!(
+        "    ssh {} {} mcp-serve   # (the MCP endpoint for cursor-agent)",
+        host_spec.display, args.remote_path
+    );
     Ok(())
 }
 
@@ -148,13 +165,19 @@ fn warn_if_not_elf(path: &Path) -> Result<()> {
         return Ok(());
     }
     let is_elf = buf == [0x7f, b'E', b'L', b'F'];
-    let is_macho = buf == [0xcf, 0xfa, 0xed, 0xfe] || buf == [0xfe, 0xed, 0xfa, 0xcf]
-        || buf == [0xce, 0xfa, 0xed, 0xfe] || buf == [0xca, 0xfe, 0xba, 0xbe];
+    let is_macho = buf == [0xcf, 0xfa, 0xed, 0xfe]
+        || buf == [0xfe, 0xed, 0xfa, 0xcf]
+        || buf == [0xce, 0xfa, 0xed, 0xfe]
+        || buf == [0xca, 0xfe, 0xba, 0xbe];
     if !is_elf {
         eprintln!(
             "[chronosphere] warning: {} is not an ELF binary ({})",
             path.display(),
-            if is_macho { "looks like Mach-O / macOS" } else { "unknown format" }
+            if is_macho {
+                "looks like Mach-O / macOS"
+            } else {
+                "unknown format"
+            }
         );
         eprintln!("[chronosphere] Pwnbox expects Linux x86_64 (ELF). On macOS, plain");
         eprintln!("  cargo build --target … will fail — you need a Linux linker.");
@@ -212,7 +235,10 @@ fn prompt_password(prompt: &str) -> Result<String> {
     io::stderr().flush().ok();
     // Best-effort: turn off echo if we're on a TTY. Fall back to plain readline.
     let mut buf = String::new();
-    io::stdin().lock().read_line(&mut buf).context("read password")?;
+    io::stdin()
+        .lock()
+        .read_line(&mut buf)
+        .context("read password")?;
     Ok(buf.trim_end_matches(&['\n', '\r'][..]).to_string())
 }
 
@@ -244,12 +270,21 @@ fn build_install_cmd(src: &str, dest: &str, sudo: bool) -> String {
 }
 
 /// Helper for `chronosphere mcp-config` — emit a snippet pointing at a remote host.
-pub fn mcp_config_ssh_snippet(host: &str, port: u16, remote_path: &str, identity: Option<&Path>) -> String {
+pub fn mcp_config_ssh_snippet(
+    host: &str,
+    port: u16,
+    remote_path: &str,
+    identity: Option<&Path>,
+) -> String {
     let mut args = vec![
-        "-o", "ControlMaster=auto",
-        "-o", "ControlPath=~/.ssh/cm-%r@%h:%p",
-        "-o", "ControlPersist=10m",
-        "-o", "ServerAliveInterval=30",
+        "-o",
+        "ControlMaster=auto",
+        "-o",
+        "ControlPath=~/.ssh/cm-%r@%h:%p",
+        "-o",
+        "ControlPersist=10m",
+        "-o",
+        "ServerAliveInterval=30",
     ];
     let port_str;
     if port != 22 {

@@ -3,9 +3,7 @@
 //! `result` object the agent can read.
 
 use super::protocol::McpError;
-use crate::engagement::{
-    CredKind, CredentialProfile, Engagement, JobRecord, JobStatus, Target,
-};
+use crate::engagement::{CredKind, CredentialProfile, Engagement, JobRecord, JobStatus, Target};
 use crate::library::CommandLibrary;
 use crate::render::{self, RenderContext};
 use crate::{builtin, config};
@@ -33,12 +31,26 @@ impl State {
         std::fs::create_dir_all(&root).ok();
         let _ = builtin::ensure_user_dir();
         let engagement = match engagement_name {
-            Some(name) => Some(Engagement::load(root.join(&name))
-                .with_context(|| format!("load engagement '{}'", name))?),
-            None => match Engagement::list(&root).into_iter().next() {
-                Some(name) => Engagement::load(root.join(&name)).ok(),
-                None => None,
-            },
+            Some(name) => Some(
+                Engagement::load_named(&root, &name)
+                    .with_context(|| format!("load engagement '{}'", name))?,
+            ),
+            None => {
+                let available = Engagement::list(&root);
+                match available.as_slice() {
+                    [] => None,
+                    [name] => Some(
+                        Engagement::load_named(&root, name)
+                            .with_context(|| format!("load engagement '{}'", name))?,
+                    ),
+                    _ => {
+                        return Err(anyhow!(
+                            "multiple engagements available; start mcp-serve with an explicit engagement: {}",
+                            available.join(", ")
+                        ));
+                    }
+                }
+            }
         };
         let lib_sources = library_sources(&root, engagement.as_ref());
         let paths: Vec<&Path> = lib_sources.iter().map(|p| p.as_path()).collect();
@@ -56,41 +68,68 @@ impl State {
         ap_override: Option<&str>,
         cred_override: Option<&str>,
         extra_vars: &serde_json::Map<String, Value>,
-    ) -> RenderContext {
+    ) -> Result<RenderContext> {
         let mut ctx = RenderContext::default();
-        if let Some(e) = &self.engagement {
-            let t = target_override
-                .and_then(|n| e.targets.targets.iter().find(|t| t.name == n))
-                .or_else(|| e.targets.active());
-            if let Some(t) = t {
-                ctx.target = Some(t.clone());
+        if let Some(engagement) = &self.engagement {
+            let target = match target_override {
+                Some(name) => Some(
+                    engagement
+                        .targets
+                        .targets
+                        .iter()
+                        .find(|target| target.name == name)
+                        .ok_or_else(|| anyhow!("no target named {}", name))?,
+                ),
+                None => engagement.targets.active(),
+            };
+            if let Some(target) = target {
+                ctx.target = Some(target.clone());
             }
-            let a = ap_override
-                .and_then(|n| e.aps.aps.iter().find(|a| a.name == n))
-                .or_else(|| e.aps.active());
-            if let Some(a) = a {
-                ctx.ap = Some(a.clone());
+
+            let ap = match ap_override {
+                Some(name) => Some(
+                    engagement
+                        .aps
+                        .aps
+                        .iter()
+                        .find(|ap| ap.name == name)
+                        .ok_or_else(|| anyhow!("no access point named {}", name))?,
+                ),
+                None => engagement.aps.active(),
+            };
+            if let Some(ap) = ap {
+                ctx.ap = Some(ap.clone());
             }
-            let p = cred_override
-                .and_then(|n| e.profiles.profiles.iter().find(|p| p.name == n))
-                .or_else(|| e.profiles.active());
-            if let Some(p) = p {
-                ctx.profile = Some(p.clone());
+
+            let profile = match cred_override {
+                Some(name) => Some(
+                    engagement
+                        .profiles
+                        .profiles
+                        .iter()
+                        .find(|profile| profile.name == name)
+                        .ok_or_else(|| anyhow!("no credential profile named {}", name))?,
+                ),
+                None => engagement.profiles.active(),
+            };
+            if let Some(profile) = profile {
+                ctx.profile = Some(profile.clone());
             }
-            ctx.pivot_tunnel = e.pivots.active_tunnel().cloned();
-            ctx.pivot_remote = e.pivots.active_remote().cloned();
-            ctx.execution_mode = e.pivots.execution_mode;
-            ctx.engagement_dir = Some(e.dir.clone());
-            ctx.globals = e.variables.values.clone();
+
+            ctx.pivot_tunnel = engagement.pivots.active_tunnel().cloned();
+            ctx.pivot_remote = engagement.pivots.active_remote().cloned();
+            ctx.execution_mode = engagement.pivots.execution_mode;
+            ctx.engagement_dir = Some(engagement.dir.clone());
+            ctx.globals = engagement.variables.values.clone();
         }
-        for (k, v) in extra_vars {
-            if let Some(s) = v.as_str() {
-                ctx.globals.insert(k.clone(), s.to_string());
-            } else {
-                ctx.globals.insert(k.clone(), v.to_string());
-            }
+        for (key, value) in extra_vars {
+            let value = value
+                .as_str()
+                .map(ToOwned::to_owned)
+                .unwrap_or_else(|| value.to_string());
+            ctx.globals.insert(key.clone(), value);
         }
-        ctx
+        Ok(ctx)
     }
 
     fn reload_library(&mut self) {
@@ -350,7 +389,11 @@ pub fn list_tools() -> Value {
     })
 }
 
-pub async fn dispatch(name: &str, args: Value, state: Arc<Mutex<State>>) -> Result<Value, McpError> {
+pub async fn dispatch(
+    name: &str,
+    args: Value,
+    state: Arc<Mutex<State>>,
+) -> Result<Value, McpError> {
     let result = match name {
         "engagement_info" => tool_engagement_info(state).await,
         "list_categories" => tool_list_categories(state).await,
@@ -557,9 +600,8 @@ async fn tool_show_command(args: Value, state: Arc<Mutex<State>>) -> Result<Valu
         args.ap.as_deref(),
         args.creds.as_deref(),
         &extra,
-    );
-    let tmpl =
-        cmd.applicable_template(&|w| crate::render::condition::evaluate(w, &ctx));
+    )?;
+    let tmpl = cmd.applicable_template(&|w| crate::render::condition::evaluate(w, &ctx));
     let rendered = render::render(tmpl, &ctx).map_err(|e| anyhow!("{}", e))?;
     Ok(json!({
         "id": cmd.id,
@@ -585,9 +627,8 @@ async fn tool_render_command(args: Value, state: Arc<Mutex<State>>) -> Result<Va
         args.ap.as_deref(),
         args.creds.as_deref(),
         &extra,
-    );
-    let tmpl =
-        cmd.applicable_template(&|w| crate::render::condition::evaluate(w, &ctx));
+    )?;
+    let tmpl = cmd.applicable_template(&|w| crate::render::condition::evaluate(w, &ctx));
     let rendered = render::render(tmpl, &ctx).map_err(|e| anyhow!("{}", e))?;
     Ok(json!({
         "resolved": rendered.resolved,
@@ -611,9 +652,22 @@ async fn tool_run_command(args: Value, state: Arc<Mutex<State>>) -> Result<Value
     let dry = args.dry_run.unwrap_or(false);
     let timeout = std::time::Duration::from_secs(args.timeout_seconds.unwrap_or(600));
 
-    let (resolved, job_id, log_path, eng_dir, target_name, ap_name, profile_name, command_id, command_title) = {
+    let (
+        resolved,
+        job_id,
+        log_path,
+        eng_dir,
+        target_name,
+        ap_name,
+        profile_name,
+        command_id,
+        command_title,
+    ) = {
         let s = state.lock().await;
-        let eng = s.engagement.as_ref().ok_or_else(|| anyhow!("no engagement loaded"))?;
+        let eng = s
+            .engagement
+            .as_ref()
+            .ok_or_else(|| anyhow!("no engagement loaded"))?;
         let (_, cmd) = find_command(&s, &args.id)?;
         let extra = args.vars.clone().unwrap_or_default();
         let ctx = s.render_ctx(
@@ -621,9 +675,8 @@ async fn tool_run_command(args: Value, state: Arc<Mutex<State>>) -> Result<Value
             args.ap.as_deref(),
             args.creds.as_deref(),
             &extra,
-        );
-        let tmpl =
-            cmd.applicable_template(&|w| crate::render::condition::evaluate(w, &ctx));
+        )?;
+        let tmpl = cmd.applicable_template(&|w| crate::render::condition::evaluate(w, &ctx));
         let rendered = render::render(tmpl, &ctx).map_err(|e| anyhow!("{}", e))?;
         let job_id = uuid::Uuid::new_v4().to_string();
         let log_path = Engagement::jobs_dir(&eng.dir).join(format!("{}.log", job_id));
@@ -655,23 +708,27 @@ async fn tool_run_command(args: Value, state: Arc<Mutex<State>>) -> Result<Value
     // Append a JobRecord with status=Running so list_jobs / tail_job work right away.
     {
         let mut s = state.lock().await;
-        let eng = s.engagement.as_mut().ok_or_else(|| anyhow!("no engagement"))?;
+        let eng = s
+            .engagement
+            .as_mut()
+            .ok_or_else(|| anyhow!("no engagement"))?;
         let pivot_name = eng
             .pivots
             .active_remote()
             .or_else(|| eng.pivots.active_tunnel())
             .map(|p| p.name.clone());
-        let execution_label = if eng.pivots.execution_mode == crate::engagement::ExecutionMode::Remote {
-            format!(
-                "remote@{}",
-                eng.pivots
-                    .active_remote()
-                    .map(|p| p.name.as_str())
-                    .unwrap_or("?")
-            )
-        } else {
-            "local".into()
-        };
+        let execution_label =
+            if eng.pivots.execution_mode == crate::engagement::ExecutionMode::Remote {
+                format!(
+                    "remote@{}",
+                    eng.pivots
+                        .active_remote()
+                        .map(|p| p.name.as_str())
+                        .unwrap_or("?")
+                )
+            } else {
+                "local".into()
+            };
         let rec = JobRecord {
             id: job_id.clone(),
             command_id: Some(command_id.clone()),
@@ -765,18 +822,17 @@ async fn tool_tail_job(args: Value, state: Arc<Mutex<State>>) -> Result<Value> {
     let n = args.lines.unwrap_or(200).clamp(1, 5000);
     let (log_path, status, exit_code) = {
         let s = state.lock().await;
-        let eng = s.engagement.as_ref().ok_or_else(|| anyhow!("no engagement"))?;
+        let eng = s
+            .engagement
+            .as_ref()
+            .ok_or_else(|| anyhow!("no engagement"))?;
         let job = eng
             .history
             .recent
             .iter()
             .find(|j| j.id == args.job_id)
             .ok_or_else(|| anyhow!("no such job: {}", args.job_id))?;
-        (
-            job.log_path.clone(),
-            job.status,
-            job.exit_code,
-        )
+        (job.log_path.clone(), job.status, job.exit_code)
     };
     let body = match log_path {
         Some(p) if p.exists() => fs::read_to_string(&p).await.unwrap_or_default(),
@@ -812,7 +868,10 @@ async fn tool_grep_job(args: Value, state: Arc<Mutex<State>>) -> Result<Value> {
     };
     let log_path = {
         let s = state.lock().await;
-        let eng = s.engagement.as_ref().ok_or_else(|| anyhow!("no engagement"))?;
+        let eng = s
+            .engagement
+            .as_ref()
+            .ok_or_else(|| anyhow!("no engagement"))?;
         eng.history
             .recent
             .iter()
@@ -839,12 +898,12 @@ async fn tool_grep_job(args: Value, state: Arc<Mutex<State>>) -> Result<Value> {
 }
 
 async fn tool_list_jobs(args: Value, state: Arc<Mutex<State>>) -> Result<Value> {
-    let limit = args
-        .get("limit")
-        .and_then(|v| v.as_u64())
-        .unwrap_or(20) as usize;
+    let limit = args.get("limit").and_then(|v| v.as_u64()).unwrap_or(20) as usize;
     let s = state.lock().await;
-    let eng = s.engagement.as_ref().ok_or_else(|| anyhow!("no engagement"))?;
+    let eng = s
+        .engagement
+        .as_ref()
+        .ok_or_else(|| anyhow!("no engagement"))?;
     let mut jobs: Vec<&JobRecord> = eng.history.recent.iter().collect();
     jobs.reverse();
     let truncated: Vec<Value> = jobs
@@ -877,12 +936,17 @@ async fn tool_kill_job(args: Value, _state: Arc<Mutex<State>>) -> Result<Value> 
         .and_then(|v| v.as_str())
         .ok_or_else(|| anyhow!("missing job_id"))?
         .to_string();
-    Ok(json!({"job_id": job_id, "note": "kill is best-effort; for full kill support attach via tmux"}))
+    Ok(
+        json!({"job_id": job_id, "note": "kill is best-effort; for full kill support attach via tmux"}),
+    )
 }
 
 async fn tool_targets_list(state: Arc<Mutex<State>>) -> Result<Value> {
     let s = state.lock().await;
-    let eng = s.engagement.as_ref().ok_or_else(|| anyhow!("no engagement"))?;
+    let eng = s
+        .engagement
+        .as_ref()
+        .ok_or_else(|| anyhow!("no engagement"))?;
     let active = eng.targets.active().map(|t| t.name.clone());
     let list: Vec<Value> = eng
         .targets
@@ -917,7 +981,10 @@ struct TargetsAddArgs {
 async fn tool_targets_add(args: Value, state: Arc<Mutex<State>>) -> Result<Value> {
     let args: TargetsAddArgs = serde_json::from_value(args).map_err(|e| anyhow!("{}", e))?;
     let mut s = state.lock().await;
-    let eng = s.engagement.as_mut().ok_or_else(|| anyhow!("no engagement"))?;
+    let eng = s
+        .engagement
+        .as_mut()
+        .ok_or_else(|| anyhow!("no engagement"))?;
     let activate = args.name.clone();
     eng.targets.upsert(Target {
         name: args.name,
@@ -940,7 +1007,10 @@ async fn tool_targets_use(args: Value, state: Arc<Mutex<State>>) -> Result<Value
         .ok_or_else(|| anyhow!("missing name"))?
         .to_string();
     let mut s = state.lock().await;
-    let eng = s.engagement.as_mut().ok_or_else(|| anyhow!("no engagement"))?;
+    let eng = s
+        .engagement
+        .as_mut()
+        .ok_or_else(|| anyhow!("no engagement"))?;
     if !eng.targets.set_active(&name) {
         return Err(anyhow!("no target named {}", name));
     }
@@ -950,7 +1020,10 @@ async fn tool_targets_use(args: Value, state: Arc<Mutex<State>>) -> Result<Value
 
 async fn tool_creds_list(state: Arc<Mutex<State>>) -> Result<Value> {
     let s = state.lock().await;
-    let eng = s.engagement.as_ref().ok_or_else(|| anyhow!("no engagement"))?;
+    let eng = s
+        .engagement
+        .as_ref()
+        .ok_or_else(|| anyhow!("no engagement"))?;
     let active = eng.profiles.active().map(|p| p.name.clone());
     let list: Vec<Value> = eng
         .profiles
@@ -993,7 +1066,10 @@ async fn tool_creds_add(args: Value, state: Arc<Mutex<State>>) -> Result<Value> 
         other => return Err(anyhow!("unknown kind '{}'", other)),
     };
     let mut s = state.lock().await;
-    let eng = s.engagement.as_mut().ok_or_else(|| anyhow!("no engagement"))?;
+    let eng = s
+        .engagement
+        .as_mut()
+        .ok_or_else(|| anyhow!("no engagement"))?;
     let activate = args.name.clone();
     eng.profiles.upsert(CredentialProfile {
         name: args.name,
@@ -1017,7 +1093,10 @@ async fn tool_creds_use(args: Value, state: Arc<Mutex<State>>) -> Result<Value> 
         .ok_or_else(|| anyhow!("missing name"))?
         .to_string();
     let mut s = state.lock().await;
-    let eng = s.engagement.as_mut().ok_or_else(|| anyhow!("no engagement"))?;
+    let eng = s
+        .engagement
+        .as_mut()
+        .ok_or_else(|| anyhow!("no engagement"))?;
     if !eng.profiles.set_active(&name) {
         return Err(anyhow!("no profile named {}", name));
     }
@@ -1032,7 +1111,7 @@ async fn tool_engagement_switch(args: Value, state: Arc<Mutex<State>>) -> Result
         .ok_or_else(|| anyhow!("missing name"))?
         .to_string();
     let mut s = state.lock().await;
-    let eng = Engagement::load(s.root.join(&name))
+    let eng = Engagement::load_named(&s.root, &name)
         .with_context(|| format!("load engagement '{}'", name))?;
     s.engagement = Some(eng);
     s.reload_library();
@@ -1093,10 +1172,7 @@ async fn tool_doctor(args: Value, state: Arc<Mutex<State>>) -> Result<Value> {
     }
 }
 
-fn find_command<'a>(
-    s: &'a State,
-    id: &str,
-) -> Result<(String, &'a crate::library::CommandEntry)> {
+fn find_command<'a>(s: &'a State, id: &str) -> Result<(String, &'a crate::library::CommandEntry)> {
     for cat in &s.library.categories {
         if let Some(cmd) = cat.commands.iter().find(|c| c.id == id) {
             return Ok((cat.id.clone(), cmd));

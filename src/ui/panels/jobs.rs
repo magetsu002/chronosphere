@@ -13,10 +13,17 @@ pub fn render(f: &mut Frame, area: Rect, app: &App, hit: &mut ListRegion) {
     hit.panel = area;
     hit.list_inner = ListRegion::block_inner(area);
     let is_focused = app.focus == Focus::Jobs;
-    let border_style = if is_focused { Theme::border_active() } else { Theme::border() };
+    let border_style = if is_focused {
+        Theme::border_active()
+    } else {
+        Theme::border()
+    };
 
     let title = if is_focused {
-        format!(" jobs ({} running) — Enter/L log ", app.jobs_running_count())
+        format!(
+            " jobs ({} running) — Enter/L log ",
+            app.jobs_running_count()
+        )
     } else {
         format!(" jobs ({} running) ", app.jobs_running_count())
     };

@@ -76,10 +76,9 @@ impl Executor {
         let status_str = status_path.to_string_lossy().to_string();
 
         let resolved = if req.execution_mode == ExecutionMode::Remote {
-            let pivot = req
-                .remote_pivot
-                .as_ref()
-                .ok_or_else(|| anyhow::anyhow!("remote execution requires an active pivot with SSH"))?;
+            let pivot = req.remote_pivot.as_ref().ok_or_else(|| {
+                anyhow::anyhow!("remote execution requires an active pivot with SSH")
+            })?;
             if !pivot.has_ssh() {
                 anyhow::bail!("pivot '{}' missing ssh_user/ssh_host", pivot.name);
             }
@@ -109,13 +108,17 @@ impl Executor {
             let opts = tmux::NewWindowOpts {
                 session: tmux_session_name(self.availability),
                 window_name: &window_name,
-                detached: !req.interactive || self.availability == TmuxAvailability::SessionBootstrapped,
+                detached: !req.interactive
+                    || self.availability == TmuxAvailability::SessionBootstrapped,
                 command: &wrapped,
             };
             match tmux::new_window(opts) {
                 Ok(wid) => Some(wid),
                 Err(err) => {
-                    tracing::error!(?err, "tmux new-window failed, falling back to external terminal");
+                    tracing::error!(
+                        ?err,
+                        "tmux new-window failed, falling back to external terminal"
+                    );
                     spawn_external_terminal(&resolved, &log_str, &status_str)?;
                     None
                 }
@@ -200,12 +203,9 @@ impl Executor {
                 tmux::select_window(tmux_session_name(self.availability), w)?;
                 Ok(FocusResult::Focused)
             }
-            (TmuxAvailability::SessionBootstrapped, Some(w)) => {
-                Ok(FocusResult::AttachCommand(format!(
-                    "tmux attach -t {} \\; select-window -t {}",
-                    TMUX_SESSION, w
-                )))
-            }
+            (TmuxAvailability::SessionBootstrapped, Some(w)) => Ok(FocusResult::AttachCommand(
+                format!("tmux attach -t {} \\; select-window -t {}", TMUX_SESSION, w),
+            )),
             _ => Ok(FocusResult::Unfocusable),
         }
     }

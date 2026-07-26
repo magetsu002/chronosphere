@@ -44,7 +44,11 @@ impl CommandLibrary {
                 }
             }
         }
-        cats.sort_by(|a, b| a.order.cmp(&b.order).then(a.display_name.cmp(&b.display_name)));
+        cats.sort_by(|a, b| {
+            a.order
+                .cmp(&b.order)
+                .then(a.display_name.cmp(&b.display_name))
+        });
         Ok(Self { categories: cats })
     }
 
@@ -197,7 +201,10 @@ test "$out" = "bob"
             .arg(script)
             .status()
             .expect("run bash");
-        assert!(status.success(), "smb harvest parser regression script failed");
+        assert!(
+            status.success(),
+            "smb harvest parser regression script failed"
+        );
     }
 
     fn extract_helper_names(template: &str) -> Vec<String> {
@@ -220,7 +227,10 @@ fn merge_into(cats: &mut Vec<Category>, file: CategoryFile, source: PathBuf) {
         None => {
             cats.push(Category {
                 id: file.category.clone(),
-                display_name: file.display_name.clone().unwrap_or_else(|| file.category.clone()),
+                display_name: file
+                    .display_name
+                    .clone()
+                    .unwrap_or_else(|| file.category.clone()),
                 icon: file.icon.clone(),
                 order: file.order.unwrap_or(100),
                 commands: Vec::new(),

@@ -1,4 +1,4 @@
-use crate::app::{App, ApEditField, ApModalState, Modal};
+use crate::app::{ApEditField, ApModalState, App, Modal};
 use crate::ui::centered_rect;
 use crate::ui::layout::ListRegion;
 use crate::ui::theme::Theme;
@@ -25,7 +25,9 @@ pub fn render(f: &mut Frame, area: Rect, app: &App, list_hit: &mut Option<ListRe
 
     match &modal.state {
         ApModalState::List { cursor } => render_list(f, inner, app, *cursor, list_hit),
-        ApModalState::Edit { fields, focused, .. } => {
+        ApModalState::Edit {
+            fields, focused, ..
+        } => {
             *list_hit = None;
             render_edit(f, inner, fields, *focused);
         }

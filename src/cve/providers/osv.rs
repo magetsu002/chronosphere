@@ -78,8 +78,14 @@ fn parse_osv(root: &Value, expected_cve: &str) -> Option<CveRecord> {
         .unwrap_or("")
         .to_string();
 
-    let published = root.get("published").and_then(|v| v.as_str()).map(String::from);
-    let modified = root.get("modified").and_then(|v| v.as_str()).map(String::from);
+    let published = root
+        .get("published")
+        .and_then(|v| v.as_str())
+        .map(String::from);
+    let modified = root
+        .get("modified")
+        .and_then(|v| v.as_str())
+        .map(String::from);
 
     let mut products = Vec::new();
     if let Some(arr) = root.get("affected").and_then(|v| v.as_array()) {
@@ -130,7 +136,8 @@ mod tests {
 
     #[test]
     fn cve_as_osv_id() {
-        let json = r#"{"id":"CVE-2021-44228","summary":"Log4Shell","aliases":["GHSA-jfh8-c2jp-5v3q"]}"#;
+        let json =
+            r#"{"id":"CVE-2021-44228","summary":"Log4Shell","aliases":["GHSA-jfh8-c2jp-5v3q"]}"#;
         let root: Value = serde_json::from_str(json).unwrap();
         let rec = parse_osv(&root, "CVE-2021-44228").unwrap();
         assert_eq!(rec.id, "CVE-2021-44228");
@@ -138,7 +145,8 @@ mod tests {
 
     #[test]
     fn ghsa_with_cve_alias() {
-        let json = r#"{"id":"GHSA-jfh8-c2jp-5v3q","summary":"Log4Shell","aliases":["CVE-2021-44228"]}"#;
+        let json =
+            r#"{"id":"GHSA-jfh8-c2jp-5v3q","summary":"Log4Shell","aliases":["CVE-2021-44228"]}"#;
         let root: Value = serde_json::from_str(json).unwrap();
         let rec = parse_osv(&root, "CVE-2021-44228").unwrap();
         assert_eq!(rec.id, "CVE-2021-44228");

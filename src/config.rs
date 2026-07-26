@@ -59,7 +59,10 @@ pub fn builtin_commands_dir() -> PathBuf {
     if user.exists() {
         return user;
     }
-    for sys in ["/usr/local/share/chronosphere/commands", "/usr/share/chronosphere/commands"] {
+    for sys in [
+        "/usr/local/share/chronosphere/commands",
+        "/usr/share/chronosphere/commands",
+    ] {
         let p = PathBuf::from(sys);
         if p.exists() {
             return p;

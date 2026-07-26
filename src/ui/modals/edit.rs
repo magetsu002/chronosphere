@@ -55,12 +55,8 @@ pub fn render(f: &mut Frame, area: Rect, app: &mut App, edit_hit: &mut Option<Ed
     } else {
         (textarea_area.width, textarea_area.height)
     };
-    modal.textarea_scroll = textarea_scroll_after_render(
-        &modal.textarea,
-        modal.textarea_scroll,
-        inner_w,
-        inner_h,
-    );
+    modal.textarea_scroll =
+        textarea_scroll_after_render(&modal.textarea, modal.textarea_scroll, inner_w, inner_h);
 
     let mut idx = 0;
     f.render_widget(&modal.textarea, layout[idx]);
@@ -70,7 +66,10 @@ pub fn render(f: &mut Frame, area: Rect, app: &mut App, edit_hit: &mut Option<Ed
     if show_suggestions {
         let sugg_block = Block::default()
             .borders(Borders::ALL)
-            .title(Span::styled(" path completions (Tab/Shift-Tab) ", Theme::accent_bold()))
+            .title(Span::styled(
+                " path completions (Tab/Shift-Tab) ",
+                Theme::accent_bold(),
+            ))
             .border_style(Theme::border())
             .style(Theme::panel());
         let items: Vec<ListItem> = modal
@@ -88,9 +87,7 @@ pub fn render(f: &mut Frame, area: Rect, app: &mut App, edit_hit: &mut Option<Ed
             .collect();
         let mut state = ListState::default();
         state.select(Some(modal.path_pick.min(items.len().saturating_sub(1))));
-        let list = List::new(items)
-            .block(sugg_block)
-            .highlight_symbol("▶ ");
+        let list = List::new(items).block(sugg_block).highlight_symbol("▶ ");
         f.render_stateful_widget(list, layout[idx], &mut state);
         suggestions = Some(ListRegion {
             panel: layout[idx],

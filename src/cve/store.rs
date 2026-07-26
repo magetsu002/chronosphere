@@ -90,8 +90,8 @@ impl CveStore {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
         }
-        let conn = Connection::open(&path)
-            .with_context(|| format!("open cve db {}", path.display()))?;
+        let conn =
+            Connection::open(&path).with_context(|| format!("open cve db {}", path.display()))?;
         conn.execute_batch("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;")?;
         conn.execute_batch(SCHEMA)?;
         Ok(Self { conn })
@@ -168,10 +168,18 @@ impl CveStore {
     }
 
     fn replace_children(&mut self, record: &CveRecord) -> Result<()> {
-        self.conn.execute("DELETE FROM cve_products WHERE cve_id = ?1", params![record.id])?;
-        self.conn.execute("DELETE FROM cve_cwes WHERE cve_id = ?1", params![record.id])?;
-        self.conn.execute("DELETE FROM cve_refs WHERE cve_id = ?1", params![record.id])?;
-        self.conn.execute("DELETE FROM cve_aliases WHERE cve_id = ?1", params![record.id])?;
+        self.conn.execute(
+            "DELETE FROM cve_products WHERE cve_id = ?1",
+            params![record.id],
+        )?;
+        self.conn
+            .execute("DELETE FROM cve_cwes WHERE cve_id = ?1", params![record.id])?;
+        self.conn
+            .execute("DELETE FROM cve_refs WHERE cve_id = ?1", params![record.id])?;
+        self.conn.execute(
+            "DELETE FROM cve_aliases WHERE cve_id = ?1",
+            params![record.id],
+        )?;
 
         for p in &record.products {
             self.conn.execute(
@@ -209,9 +217,15 @@ impl CveStore {
             .collect::<Vec<_>>()
             .join(" ");
         let cwes = record.cwes.join(" ");
-        let refs_text: String = record.references.iter().map(|r| r.url.as_str()).collect::<Vec<_>>().join(" ");
+        let refs_text: String = record
+            .references
+            .iter()
+            .map(|r| r.url.as_str())
+            .collect::<Vec<_>>()
+            .join(" ");
 
-        self.conn.execute("DELETE FROM cves_fts WHERE id = ?1", params![record.id])?;
+        self.conn
+            .execute("DELETE FROM cves_fts WHERE id = ?1", params![record.id])?;
         self.conn.execute(
             "INSERT INTO cves_fts (id, description, products, cwes, refs_text) VALUES (?1,?2,?3,?4,?5)",
             params![record.id, record.description, products, cwes, refs_text],
@@ -272,13 +286,17 @@ impl CveStore {
     }
 
     fn load_cwes(&self, cve_id: &str) -> Result<Vec<String>> {
-        let mut stmt = self.conn.prepare("SELECT cwe FROM cve_cwes WHERE cve_id = ?1")?;
+        let mut stmt = self
+            .conn
+            .prepare("SELECT cwe FROM cve_cwes WHERE cve_id = ?1")?;
         let rows = stmt.query_map(params![cve_id], |r| r.get(0))?;
         rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
     }
 
     fn load_refs(&self, cve_id: &str) -> Result<Vec<CveReference>> {
-        let mut stmt = self.conn.prepare("SELECT url, source, tags FROM cve_refs WHERE cve_id = ?1")?;
+        let mut stmt = self
+            .conn
+            .prepare("SELECT url, source, tags FROM cve_refs WHERE cve_id = ?1")?;
         let rows = stmt.query_map(params![cve_id], |r| {
             let tags_str: String = r.get(2)?;
             Ok(CveReference {
@@ -291,7 +309,9 @@ impl CveStore {
     }
 
     fn load_aliases(&self, cve_id: &str) -> Result<Vec<String>> {
-        let mut stmt = self.conn.prepare("SELECT alias_id FROM cve_aliases WHERE cve_id = ?1")?;
+        let mut stmt = self
+            .conn
+            .prepare("SELECT alias_id FROM cve_aliases WHERE cve_id = ?1")?;
         let rows = stmt.query_map(params![cve_id], |r| r.get(0))?;
         rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
     }
@@ -332,13 +352,14 @@ impl CveStore {
     pub fn count(&self, filter: &CveFilter) -> Result<u64> {
         let (sql, params_vec) = crate::cve::filter::build_count_query(filter);
         let refs = Self::params_as_refs(&params_vec);
-        let n: u64 = self
-            .conn
-            .query_row(&sql, refs.as_slice(), |r| r.get(0))?;
+        let n: u64 = self.conn.query_row(&sql, refs.as_slice(), |r| r.get(0))?;
         Ok(n)
     }
 
-    fn query_ids(stmt: &mut rusqlite::Statement, params_vec: &[rusqlite::types::Value]) -> Result<Vec<String>> {
+    fn query_ids(
+        stmt: &mut rusqlite::Statement,
+        params_vec: &[rusqlite::types::Value],
+    ) -> Result<Vec<String>> {
         let refs = Self::params_as_refs(params_vec);
         let rows = stmt.query_map(refs.as_slice(), |r| r.get::<_, String>(0))?;
         rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
@@ -365,11 +386,11 @@ impl CveStore {
         let total: u64 = self
             .conn
             .query_row("SELECT COUNT(*) FROM cves", [], |r| r.get(0))?;
-        let kev_count: u64 = self.conn.query_row(
-            "SELECT COUNT(*) FROM cves WHERE in_kev = 1",
-            [],
-            |r| r.get(0),
-        )?;
+        let kev_count: u64 =
+            self.conn
+                .query_row("SELECT COUNT(*) FROM cves WHERE in_kev = 1", [], |r| {
+                    r.get(0)
+                })?;
         let last_sync: Option<String> = self
             .conn
             .query_row(
@@ -592,8 +613,7 @@ mod tests {
         assert_eq!(page2.len(), 5);
 
         // Pages must not overlap.
-        let first_ids: std::collections::HashSet<_> =
-            page0.iter().map(|s| s.id.clone()).collect();
+        let first_ids: std::collections::HashSet<_> = page0.iter().map(|s| s.id.clone()).collect();
         assert!(page2.iter().all(|s| !first_ids.contains(&s.id)));
 
         let _ = std::fs::remove_dir_all(&dir);

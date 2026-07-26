@@ -57,6 +57,9 @@ mod tests {
         assert_eq!(feed.vulnerabilities.len(), 1);
         assert_eq!(feed.vulnerabilities[0].cve_id, "CVE-2024-21182");
         assert_eq!(feed.vulnerabilities[0].date_added, "2026-06-01");
-        assert_eq!(feed.vulnerabilities[0].due_date.as_deref(), Some("2026-06-04"));
+        assert_eq!(
+            feed.vulnerabilities[0].due_date.as_deref(),
+            Some("2026-06-04")
+        );
     }
 }
