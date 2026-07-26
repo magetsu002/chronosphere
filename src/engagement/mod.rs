@@ -145,28 +145,38 @@ pub fn create(root: &Path, name: &str) -> Result<Self> {
         let meta_str = fs::read_to_string(&meta_path)
             .with_context(|| format!("read {}", meta_path.display()))?;
         let meta: EngagementMeta =
-            toml::from_str(&meta_str).context("parse engagement.toml")?;
-        let targets = TargetStore::load(&Self::targets_path(&dir)).unwrap_or_else(|err| {
-            tracing::warn!(?err, "could not load targets.json; starting fresh");
-            TargetStore::new()
-        });
-        let aps = ApStore::load(&Self::aps_path(&dir)).unwrap_or_else(|err| {
-            tracing::warn!(?err, "could not load aps.json; starting fresh");
-            ApStore::new()
-        });
-        let pivots = PivotStore::load(&Self::pivots_path(&dir)).unwrap_or_else(|err| {
-            tracing::warn!(?err, "could not load pivots.json; starting fresh");
-            PivotStore::new()
-        });
-        let profiles = ProfileStore::load(&Self::creds_path(&dir)).unwrap_or_else(|err| {
-            tracing::warn!(?err, "could not load creds.json; starting fresh");
-            ProfileStore::new()
-        });
-        let variables = VariableStore::load(&Self::variables_path(&dir)).unwrap_or_else(|err| {
-            tracing::warn!(?err, "could not load variables.json; starting fresh");
-            VariableStore::new()
-        });
-let mut history = HistoryStore::open(&Self::history_path(&dir))?;
+            toml::from_str(&meta_str).context("parse engagement.toml")?;let targets_path = Self::targets_path(&dir);
+let targets = if targets_path.exists() {
+    TargetStore::load(&targets_path).context("load targets.json")?
+} else {
+    TargetStore::new()
+};
+let aps_path = Self::aps_path(&dir);
+let aps = if aps_path.exists() {
+    ApStore::load(&aps_path).context("load aps.json")?
+} else {
+    ApStore::new()
+};
+let pivots_path = Self::pivots_path(&dir);
+let pivots = if pivots_path.exists() {
+    PivotStore::load(&pivots_path).context("load pivots.json")?
+} else {
+    PivotStore::new()
+};
+let profiles_path = Self::creds_path(&dir);
+let profiles = if profiles_path.exists() {
+    ProfileStore::load(&profiles_path).context("load creds.json")?
+} else {
+    ProfileStore::new()
+};
+let variables_path = Self::variables_path(&dir);
+let variables = if variables_path.exists() {
+    VariableStore::load(&variables_path).context("load variables.json")?
+} else {
+    VariableStore::new()
+};
+let mut history = HistoryStore::open
+(&Self::history_path(&dir))?;
 let secrets = crate::security::store_secrets(&profiles, &aps, &pivots, &variables);
 if history.redact_values(&secrets) {
     tracing::warn!("redacted sensitive values from legacy job history");

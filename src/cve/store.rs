@@ -105,6 +105,8 @@ impl CveStore {
     }
 
     pub fn upsert(&mut self, record: &CveRecord) -> Result<bool> {
+        self.conn.execute_batch("SAVEPOINT chronosphere_cve_upsert")?;
+        let result = (|| -> Result<bool> {
         let exists: bool = self
             .conn
             .query_row(
@@ -165,9 +167,24 @@ impl CveStore {
         self.rebuild_fts_row(&merged)?;
 
         Ok(!exists)
+    })();
+    match result {
+        Ok(value) => {
+            self.conn
+                .execute_batch("RELEASE SAVEPOINT chronosphere_cve_upsert")?;
+            Ok(value)
+        }
+        Err(err) => {
+            let _ = self.conn.execute_batch(
+                "ROLLBACK TO SAVEPOINT chronosphere_cve_upsert;                              RELEASE SAVEPOINT chronosphere_cve_upsert",
+            );
+            Err(err)
+        }
     }
+}
 
-    fn replace_children(&mut self, record: &CveRecord) -> Result<()> {
+fn replace_children
+(&mut self, record: &CveRecord) -> Result<()> {
         self.conn.execute("DELETE FROM cve_products WHERE cve_id = ?1", params![record.id])?;
         self.conn.execute("DELETE FROM cve_cwes WHERE cve_id = ?1", params![record.id])?;
         self.conn.execute("DELETE FROM cve_refs WHERE cve_id = ?1", params![record.id])?;
