@@ -1,0 +1,21 @@
+$ git rev-parse HEAD
+b5ef47bd4faf7e1f53e6e5742b5c51fab9fdd798
+
+$ git config user.name Chronosphere Hardening
+$ git config user.email actions@users.noreply.github.com
+$ git fetch origin fix/trust-and-reliability-v1
+From https://github.com/magetsu002/chronosphere
+ * branch            fix/trust-and-reliability-v1 -> FETCH_HEAD
+
+$ git cherry-pick --no-commit -X ours a74ff8e7bd47abc5e2471d90f58fb767509ac37a
+Auto-merging src/cli.rs
+
+Traceback (most recent call last):
+  File "/tmp/replay_hardening_v3.py", line 391, in main
+    patch_context()
+  File "/tmp/replay_hardening_v3.py", line 159, in patch_context
+    raise RuntimeError("resolve context call not found")
+RuntimeError: resolve context call not found
+
+$ git reset --hard b5ef47bd4faf7e1f53e6e5742b5c51fab9fdd798
+HEAD is now at b5ef47b chore: rerun hardening with tracked diagnostics
