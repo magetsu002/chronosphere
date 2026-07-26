@@ -1,8 +1,6 @@
-name: Implement job recovery and log streaming
+name: Build job recovery milestones
 
 on:
-  push:
-    branches: [chore/job-recovery-bootstrap]
   pull_request:
     branches: [main]
 
@@ -15,7 +13,6 @@ concurrency:
 
 jobs:
   implement:
-    if: ${{ !startsWith(github.event.head_commit.message || '', 'chore: capture job recovery failure') }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -37,13 +34,4 @@ jobs:
           status=$?
           set -e
           cat /tmp/job-recovery.log
-          if [ "$status" -ne 0 ]; then
-            git cherry-pick --abort 2>/dev/null || true
-            git reset --hard
-            git switch -f chore/job-recovery-bootstrap
-            cp /tmp/job-recovery.log .github/job-recovery-failure.txt
-            git add .github/job-recovery-failure.txt
-            git commit -m "chore: capture job recovery failure"
-            git push origin HEAD:chore/job-recovery-bootstrap
-            exit "$status"
-          fi
+          exit "$status"
