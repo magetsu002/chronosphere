@@ -58,4 +58,4 @@ jobs:
         if: steps.implementation.outputs.status != '0'
         run: exit 1
 
-# Capture exact implementation output as an artifact before enforcing failure.
+# Final trigger after every payload chunk matched its expected Git blob SHA.
