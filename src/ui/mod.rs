@@ -2,8 +2,8 @@ pub mod layout;
 pub mod modals;
 pub mod panels;
 pub mod splash;
-pub mod theme;
 pub mod textarea_mouse;
+pub mod theme;
 
 use crate::app::{App, Focus, Modal};
 use layout::HitRegions;
@@ -85,13 +85,7 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         Modal::Edit(_) => modals::edit::render(f, area, app, &mut edit_hit),
         Modal::JobLog(_) => modals::job_log::render(f, area, app, &mut job_log_scroll),
         Modal::Cve(_) => {
-            modals::cve::render(
-                f,
-                area,
-                app,
-                &mut cve_list,
-                &mut cve_detail_scroll,
-            );
+            modals::cve::render(f, area, app, &mut cve_list, &mut cve_detail_scroll);
         }
     }
 

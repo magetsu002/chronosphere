@@ -12,11 +12,7 @@ fn next_scroll_top(prev_top: u16, cursor: u16, len: u16) -> u16 {
 }
 
 fn num_digits_usize(i: usize) -> u16 {
-    if i == 0 {
-        1
-    } else {
-        i.ilog10() as u16 + 1
-    }
+    if i == 0 { 1 } else { i.ilog10() as u16 + 1 }
 }
 
 /// Mirror `tui_textarea` viewport scroll after a frame (see `widget.rs`).

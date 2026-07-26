@@ -69,14 +69,36 @@ impl Engagement {
         dir.join("commands")
     }
 
-    pub fn create(root: &Path, name: &str) -> Result<Self> {
+    pub fn validate_name(name: &str) -> Result<()> {
         if name.is_empty()
+            || name == "."
+            || name == ".."
             || name.contains('/')
             || name.contains('\\')
             || name.starts_with('.')
         {
             anyhow::bail!("invalid engagement name '{}'", name);
         }
+        Ok(())
+    }
+
+    pub fn load_named(root: &Path, name: &str) -> Result<Self> {
+        Self::validate_name(name)?;
+        let canonical_root = root
+            .canonicalize()
+            .with_context(|| format!("canonicalize engagement root {}", root.display()))?;
+        let requested = root.join(name);
+        let canonical_dir = requested
+            .canonicalize()
+            .with_context(|| format!("resolve engagement {}", requested.display()))?;
+        if !canonical_dir.starts_with(&canonical_root) {
+            anyhow::bail!("engagement '{}' escapes configured root", name);
+        }
+        Self::load(canonical_dir)
+    }
+
+    pub fn create(root: &Path, name: &str) -> Result<Self> {
+        Self::validate_name(name)?;
         let dir = root.join(name);
         if dir.exists() {
             anyhow::bail!("engagement '{}' already exists", name);
@@ -122,8 +144,7 @@ impl Engagement {
         let meta_path = Self::meta_path(&dir);
         let meta_str = fs::read_to_string(&meta_path)
             .with_context(|| format!("read {}", meta_path.display()))?;
-        let meta: EngagementMeta =
-            toml::from_str(&meta_str).context("parse engagement.toml")?;
+        let meta: EngagementMeta = toml::from_str(&meta_str).context("parse engagement.toml")?;
         let targets = TargetStore::load(&Self::targets_path(&dir)).unwrap_or_else(|err| {
             tracing::warn!(?err, "could not load targets.json; starting fresh");
             TargetStore::new()

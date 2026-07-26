@@ -82,7 +82,10 @@ impl PocIndex {
                         continue;
                     }
                     let status = p.status.trim().to_string();
-                    if !READY_STATUSES.iter().any(|s| s.eq_ignore_ascii_case(&status)) {
+                    if !READY_STATUSES
+                        .iter()
+                        .any(|s| s.eq_ignore_ascii_case(&status))
+                    {
                         continue;
                     }
                     by_cve.insert(

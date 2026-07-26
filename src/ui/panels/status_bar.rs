@@ -12,18 +12,19 @@ pub fn render(f: &mut Frame, area: Rect, app: &App, hits: &mut StatusBarHits) {
     hits.chips.clear();
     let mut x = area.x;
 
-    let mut advance = |hits: &mut StatusBarHits, x: &mut u16, text: &str, action: Option<StatusBarAction>| {
-        let w = text.len() as u16;
-        if w > 0 {
-            if let Some(action) = action {
-                hits.chips.push(StatusChipHit {
-                    area: Rect::new(*x, area.y, w, area.height.max(1)),
-                    action,
-                });
+    let mut advance =
+        |hits: &mut StatusBarHits, x: &mut u16, text: &str, action: Option<StatusBarAction>| {
+            let w = text.len() as u16;
+            if w > 0 {
+                if let Some(action) = action {
+                    hits.chips.push(StatusChipHit {
+                        area: Rect::new(*x, area.y, w, area.height.max(1)),
+                        action,
+                    });
+                }
             }
-        }
-        *x = x.saturating_add(w);
-    };
+            *x = x.saturating_add(w);
+        };
 
     let mode = app.mode.label();
     let mode_style = match app.mode {
@@ -147,7 +148,10 @@ pub fn render(f: &mut Frame, area: Rect, app: &App, hits: &mut StatusBarHits) {
         advance(hits, &mut x, " │ ", None);
         advance(hits, &mut x, &prefix, None);
         spans.push(Span::raw(" │ "));
-        spans.push(Span::styled(prefix, Theme::warn().add_modifier(Modifier::BOLD)));
+        spans.push(Span::styled(
+            prefix,
+            Theme::warn().add_modifier(Modifier::BOLD),
+        ));
     }
 
     if let Some(msg) = &app.flash {

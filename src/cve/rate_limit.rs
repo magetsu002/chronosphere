@@ -1,5 +1,5 @@
 use anyhow::{Context, Result, bail};
-use reqwest::header::{HeaderMap, HeaderValue, RETRY_AFTER, USER_AGENT, ACCEPT_ENCODING};
+use reqwest::header::{ACCEPT_ENCODING, HeaderMap, HeaderValue, RETRY_AFTER, USER_AGENT};
 use reqwest::{Client, Response, StatusCode};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -74,13 +74,13 @@ impl HttpClient {
         loop {
             let wait = {
                 let mut map = self.limiters.lock().await;
-                let limiter = map.entry(provider.to_string()).or_insert_with(|| {
-                    ProviderLimiter {
+                let limiter = map
+                    .entry(provider.to_string())
+                    .or_insert_with(|| ProviderLimiter {
                         min_interval: Duration::from_millis(1000),
                         last_request: None,
                         backoff_until: None,
-                    }
-                });
+                    });
 
                 let now = Instant::now();
                 if let Some(until) = limiter.backoff_until {
@@ -136,8 +136,10 @@ impl HttpClient {
         url: &str,
         api_key: &str,
     ) -> Result<Response> {
-        self.execute(provider, url, || self.inner.get(url).header("apiKey", api_key))
-            .await
+        self.execute(provider, url, || {
+            self.inner.get(url).header("apiKey", api_key)
+        })
+        .await
     }
 
     /// Read a successful HTTP response body as text, with a proxy-safe identity-encoding retry.
@@ -198,12 +200,7 @@ impl HttpClient {
     }
 
     /// Read a successful HTTP response body as bytes, with an identity-encoding retry.
-    pub async fn read_bytes(
-        &self,
-        provider: &str,
-        url: &str,
-        resp: Response,
-    ) -> Result<Vec<u8>> {
+    pub async fn read_bytes(&self, provider: &str, url: &str, resp: Response) -> Result<Vec<u8>> {
         let status = resp.status();
         match resp.bytes().await {
             Ok(bytes) => Ok(bytes.to_vec()),
@@ -211,9 +208,7 @@ impl HttpClient {
                 tracing::warn!(url, error = %first, "response body decode failed, retrying without compression");
                 let resp = self
                     .execute(provider, url, || {
-                        self.inner
-                            .get(url)
-                            .header(ACCEPT_ENCODING, "identity")
+                        self.inner.get(url).header(ACCEPT_ENCODING, "identity")
                     })
                     .await?;
                 let bytes = resp.bytes().await.with_context(|| {
@@ -245,7 +240,8 @@ impl HttpClient {
                 return Ok(resp);
             }
 
-            if status == StatusCode::TOO_MANY_REQUESTS || status == StatusCode::SERVICE_UNAVAILABLE {
+            if status == StatusCode::TOO_MANY_REQUESTS || status == StatusCode::SERVICE_UNAVAILABLE
+            {
                 attempt += 1;
                 if attempt >= MAX_RETRIES {
                     bail!(
@@ -259,8 +255,15 @@ impl HttpClient {
                     .and_then(|v| v.to_str().ok())
                     .and_then(|s| s.parse::<u64>().ok())
                     .unwrap_or(DEFAULT_RETRY_AFTER_SECS);
-                tracing::warn!(provider, attempt, retry_secs, url, "rate limited, backing off");
-                self.set_backoff(provider, Duration::from_secs(retry_secs)).await;
+                tracing::warn!(
+                    provider,
+                    attempt,
+                    retry_secs,
+                    url,
+                    "rate limited, backing off"
+                );
+                self.set_backoff(provider, Duration::from_secs(retry_secs))
+                    .await;
                 sleep(Duration::from_secs(retry_secs)).await;
                 continue;
             }

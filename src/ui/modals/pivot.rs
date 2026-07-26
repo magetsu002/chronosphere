@@ -25,7 +25,9 @@ pub fn render(f: &mut Frame, area: Rect, app: &App, list_hit: &mut Option<ListRe
 
     match &modal.state {
         PivotModalState::List { cursor } => render_list(f, inner, app, *cursor, list_hit),
-        PivotModalState::Edit { fields, focused, .. } => {
+        PivotModalState::Edit {
+            fields, focused, ..
+        } => {
             *list_hit = None;
             render_edit(f, inner, fields, *focused);
         }
