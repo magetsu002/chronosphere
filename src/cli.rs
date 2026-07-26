@@ -1930,7 +1930,8 @@ async fn run_with_history(
     let job_id = format!("{}", uuid::Uuid::new_v4());
     let log_path = Engagement::jobs_dir(&e.dir).join(format!("{job_id}.log"));
     fs::create_dir_all(Engagement::jobs_dir(&e.dir)).ok();
-    eprintln!("[chrono] $ {}", resolved);
+    let redacted = crate::security::redact_for_engagement(resolved, &e);
+    eprintln!("[chrono] $ {}", redacted);
     let status = Command::new("bash")
         .arg("-lc")
         .arg(resolved)
@@ -1942,7 +1943,7 @@ async fn run_with_history(
         id: job_id,
         command_id: Some(id.to_string()),
         command_title: id.to_string(),
-        resolved: resolved.to_string(),
+        resolved: redacted,
         target,
         profile,
         ap,
