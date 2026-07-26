@@ -1,0 +1,16 @@
+Latest main: d689fa8dcb168695c350346644e6e9eb71b84ee8
+Branch before merge: 03ef57f11e1b70a1cd60e88c374f918a3c7835c6
+
+README.md
+src/app.rs
+src/cli.rs
+src/cve/rate_limit.rs
+src/cve/store.rs
+src/exec/ssh.rs
+src/ui/modals/ap.rs
+src/ui/modals/creds.rs
+src/ui/modals/help.rs
+src/ui/modals/pivot.rs
+src/ui/modals/target.rs
+src/ui/modals/variables.rs
+src/ui/panels/preview.rs

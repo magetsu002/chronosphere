@@ -1,0 +1,490 @@
+diff --cc README.md
+index 5b6c1a9,db0c248..0000000
+--- a/README.md
++++ b/README.md
+@@@ -318,8 -317,6 +317,11 @@@ chronosphere
+  
+  The following are sketched in the design notes but not implemented:
+  
+++<<<<<<< HEAD
+ +- **Optional semantic CVE search** on top of the implemented local FTS5 index.
+ +- **PoC pipeline** that monitors NVD/KEV, pulls from `trickest/cve` etc., and surfaces them as runnable commands.
+++=======
+++>>>>>>> origin/main
+  - **Obfuscation toolbelt** (PowerShell encoders, AMSI bypass templates, donut/ScareCrow wrappers).
+  - **Pro-Lab evasion preset** (defender recon, ETW disable hints, etc.).
+  
+diff --cc src/app.rs
+index 686f1fa,3a4487c..0000000
+--- a/src/app.rs
++++ b/src/app.rs
+@@@ -13,9 -14,9 +14,15 @@@ use crate::vim::{Action, KeyParser, Mod
+  
+  use anyhow::{Context, Result};
+  use crossterm::event::{
+++<<<<<<< HEAD
+ +    DisableMouseCapture, EnableMouseCapture, Event, EventStream, KeyCode, KeyEvent, KeyEventKind,
+ +    KeyModifiers, KeyboardEnhancementFlags, PopKeyboardEnhancementFlags,
+ +    PushKeyboardEnhancementFlags,
+++=======
++     DisableMouseCapture, EnableMouseCapture, Event, EventStream, KeyboardEnhancementFlags,
++     KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseButton, MouseEvent, MouseEventKind,
++     PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags,
+++>>>>>>> origin/main
+  };
+  use crossterm::execute;
+  use crossterm::terminal::{
+diff --cc src/cli.rs
+index dd6c906,4823595..0000000
+--- a/src/cli.rs
++++ b/src/cli.rs
+@@@ -409,7 -900,7 +900,11 @@@ pub async fn dispatch(cli: Cli) -> Resu
+  
+      crate::builtin::ensure_user_dir().context("ensure user templates")?;
+  
+++<<<<<<< HEAD
+ +    let root = cli.root.clone().unwrap_or_else(config::engagements_root);
+++=======
++     let root = cli.opts.engagements_root();
+++>>>>>>> origin/main
+  
+      match cmd {
+          Command::Tui => Ok(false),
+@@@ -670,15 -1164,7 +1179,19 @@@ alias chronosphere='{bin}
+                  println!("{}", resolved);
+                  return Ok(true);
+              }
+++<<<<<<< HEAD
+ +            let unresolved = crate::render::find_unresolved(&resolved);
+ +            if !unresolved.is_empty() {
+ +                bail!(
+ +                    "command '{}' has unresolved placeholders: {}",
+ +                    id,
+ +                    unresolved.join(", ")
+ +                );
+ +            }
+ +            run_with_history(&root, cli.engagement.as_deref(), &id, &resolved).await?;
+++=======
++             run_with_history(&root, cli.opts.engagement.as_deref(), &id, &resolved).await?;
+++>>>>>>> origin/main
+              Ok(true)
+          }
+          Command::Targets(c) => {
+@@@ -1131,7 -1590,10 +1650,14 @@@ fn print_cve_summary(rec: &crate::cve::
+          .map(|s| format!("{s:.1}"))
+          .unwrap_or_else(|| "-".into());
+      let desc: String = rec.description.chars().take(80).collect();
+++<<<<<<< HEAD
+ +    println!("{:<18} {:>8} CVSS {}  {}{}", rec.id, sev, score, desc, kev);
+++=======
++     println!(
++         "{:<18} {:>8} CVSS {}  {}{}{}",
++         rec.id, sev, score, desc, kev, poc
++     );
+++>>>>>>> origin/main
+  }
+  
+  fn print_cve_record(rec: &crate::cve::CveRecord, verbose: bool) {
+@@@ -1163,11 -1625,23 +1689,26 @@@
+              rec.epss_percentile.unwrap_or(0.0) * 100.0
+          );
+      }
++     if let Some(poc) = crate::cve::poc_index::lookup(&rec.id) {
++         let root = &crate::cve::PocIndex::global().root;
++         println!(
++             "  local PoC: {}  {}",
++             poc.status,
++             poc.absolute_path(root).display()
++         );
++         if let Some(id) = &poc.chronosphere_id {
++             println!("  run:       chronosphere run {id}");
++         }
++         if let Some(notes) = &poc.notes {
++             let short: String = notes.chars().take(120).collect();
++             println!("  poc notes: {short}");
++         }
++     }
+      if !rec.sources.is_empty() {
+ -        println!("  sources:   {}", rec.sources.iter().cloned().collect::<Vec<_>>().join(", "));
+ +        println!(
+ +            "  sources:   {}",
+ +            rec.sources.iter().cloned().collect::<Vec<_>>().join(", ")
+ +        );
+      }
+      println!("  description:");
+      for line in rec.description.lines().take(8) {
+diff --cc src/cve/rate_limit.rs
+index 2026715,af83adb..0000000
+--- a/src/cve/rate_limit.rs
++++ b/src/cve/rate_limit.rs
+@@@ -155,11 -245,13 +245,14 @@@ impl HttpClient 
+                  return Ok(resp);
+              }
+  
+ -            if status == StatusCode::TOO_MANY_REQUESTS || status == StatusCode::SERVICE_UNAVAILABLE {
+ +            if status == StatusCode::TOO_MANY_REQUESTS || status == StatusCode::SERVICE_UNAVAILABLE
+ +            {
+                  attempt += 1;
+                  if attempt >= MAX_RETRIES {
+-                     bail!("{provider}: rate limited after {MAX_RETRIES} retries ({status})");
++                     bail!(
++                         "{provider}: rate limited after {MAX_RETRIES} retries (HTTP {status}) for {url}. \
++                          Set NVD_API_KEY or wait before retrying."
++                     );
+                  }
+                  let retry_secs = resp
+                      .headers()
+@@@ -167,9 -259,8 +260,14 @@@
+                      .and_then(|v| v.to_str().ok())
+                      .and_then(|s| s.parse::<u64>().ok())
+                      .unwrap_or(DEFAULT_RETRY_AFTER_SECS);
+++<<<<<<< HEAD
+ +                tracing::warn!(provider, attempt, retry_secs, "rate limited, backing off");
+ +                self.set_backoff(provider, Duration::from_secs(retry_secs))
+ +                    .await;
+++=======
++                 tracing::warn!(provider, attempt, retry_secs, url, "rate limited, backing off");
++                 self.set_backoff(provider, Duration::from_secs(retry_secs)).await;
+++>>>>>>> origin/main
+                  sleep(Duration::from_secs(retry_secs)).await;
+                  continue;
+              }
+diff --cc src/cve/store.rs
+index f3326ee,7b09c1f..0000000
+--- a/src/cve/store.rs
++++ b/src/cve/store.rs
+@@@ -346,10 -309,36 +346,43 @@@ impl CveStore 
+          Ok(out)
+      }
+  
+++<<<<<<< HEAD
+ +    fn query_ids(
+ +        stmt: &mut rusqlite::Statement,
+ +        params_vec: &[rusqlite::types::Value],
+ +    ) -> Result<Vec<String>> {
+++=======
++     /// List/browse projection: one query, no child-table hydration. Use this
++     /// for the paged browse view; hydrate a full [`CveRecord`] via [`Self::get`]
++     /// only when a single record's detail is opened.
++     pub fn search_summaries(&self, filter: &CveFilter) -> Result<Vec<CveSummary>> {
++         let (sql, params_vec) = crate::cve::filter::build_summary_query(filter);
++         let mut stmt = self.conn.prepare(&sql)?;
++         let refs = Self::params_as_refs(&params_vec);
++         let rows = stmt.query_map(refs.as_slice(), |r| {
++             Ok(CveSummary {
++                 id: r.get(0)?,
++                 severity: r.get(1)?,
++                 cvss_v31: r.get(2)?,
++                 in_kev: r.get::<_, i32>(3)? != 0,
++                 description: r.get(4)?,
++             })
++         })?;
++         rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
++     }
++ 
++     /// Total number of rows matching the filter, ignoring limit/offset.
++     pub fn count(&self, filter: &CveFilter) -> Result<u64> {
++         let (sql, params_vec) = crate::cve::filter::build_count_query(filter);
++         let refs = Self::params_as_refs(&params_vec);
++         let n: u64 = self
++             .conn
++             .query_row(&sql, refs.as_slice(), |r| r.get(0))?;
++         Ok(n)
++     }
++ 
++     fn query_ids(stmt: &mut rusqlite::Statement, params_vec: &[rusqlite::types::Value]) -> Result<Vec<String>> {
+++>>>>>>> origin/main
+          let refs = Self::params_as_refs(params_vec);
+          let rows = stmt.query_map(refs.as_slice(), |r| r.get::<_, String>(0))?;
+          rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
+diff --cc src/exec/ssh.rs
+index 6b30e14,7a510ab..0000000
+--- a/src/exec/ssh.rs
++++ b/src/exec/ssh.rs
+@@@ -325,27 -328,20 +325,42 @@@ impl SshDeploySession 
+          Ok(())
+      }
+  
+++<<<<<<< HEAD
+ +    fn port_flag(prog: &str) -> &'static str {
+ +        if prog == "scp" { "-P" } else { "-p" }
+ +    }
+ +
+ +    fn base_cmd(&self, prog: &str) -> Command {
+ +        let mut command = if let Some(password) = &self.password {
+ +            let mut command = Command::new("sshpass");
+ +            command.arg("-e").arg(prog);
+ +            command.env("SSHPASS", password);
+ +            command
+ +        } else {
+ +            Command::new(prog)
+ +        };
+ +        command
+ +            .arg(Self::port_flag(prog))
+ +            .arg(self.port.to_string());
+ +        command.arg("-o").arg("StrictHostKeyChecking=accept-new");
+ +        if let Some(identity) = &self.identity {
+ +            command.arg("-i").arg(identity);
+++=======
++     fn base_cmd(&self, prog: &str, port_flag: &str) -> Command {
++         let mut cmd = if let Some(pw) = &self.password {
++             let mut c = Command::new("sshpass");
++             c.arg("-p").arg(pw).arg(prog);
++             c
++         } else {
++             Command::new(prog)
++         };
++         cmd.arg(port_flag).arg(self.port.to_string());
++         cmd.arg("-o").arg("StrictHostKeyChecking=accept-new");
++         if let Some(id) = &self.identity {
++             cmd.arg("-i").arg(id);
+++>>>>>>> origin/main
+          }
+ -        cmd
+ +        command
+      }
+  }
+  
+diff --cc src/ui/modals/ap.rs
+index 99454bb,26b6ccf..0000000
+--- a/src/ui/modals/ap.rs
++++ b/src/ui/modals/ap.rs
+@@@ -1,5 -1,6 +1,6 @@@
+ -use crate::app::{App, ApEditField, ApModalState, Modal};
+ +use crate::app::{ApEditField, ApModalState, App, Modal};
+  use crate::ui::centered_rect;
++ use crate::ui::layout::ListRegion;
+  use crate::ui::theme::Theme;
+  use ratatui::Frame;
+  use ratatui::layout::{Constraint, Direction, Layout, Rect};
+@@@ -23,10 -24,11 +24,18 @@@ pub fn render(f: &mut Frame, area: Rect
+      };
+  
+      match &modal.state {
+++<<<<<<< HEAD
+ +        ApModalState::List { cursor } => render_list(f, inner, app, *cursor),
+ +        ApModalState::Edit {
+ +            fields, focused, ..
+ +        } => render_edit(f, inner, fields, *focused),
+++=======
++         ApModalState::List { cursor } => render_list(f, inner, app, *cursor, list_hit),
++         ApModalState::Edit { fields, focused, .. } => {
++             *list_hit = None;
++             render_edit(f, inner, fields, *focused);
++         }
+++>>>>>>> origin/main
+      }
+  }
+  
+diff --cc src/ui/modals/creds.rs
+index 500b49c,de626f0..0000000
+--- a/src/ui/modals/creds.rs
++++ b/src/ui/modals/creds.rs
+@@@ -23,10 -24,11 +24,18 @@@ pub fn render(f: &mut Frame, area: Rect
+      };
+  
+      match &modal.state {
+++<<<<<<< HEAD
+ +        CredsModalState::List { cursor } => render_list(f, inner, app, modal, *cursor),
+ +        CredsModalState::Edit {
+ +            fields, focused, ..
+ +        } => render_edit(f, inner, fields, *focused),
+++=======
++         CredsModalState::List { cursor } => render_list(f, inner, app, modal, *cursor, list_hit),
++         CredsModalState::Edit { fields, focused, .. } => {
++             *list_hit = None;
++             render_edit(f, inner, fields, *focused);
++         }
+++>>>>>>> origin/main
+      }
+  }
+  
+diff --cc src/ui/modals/help.rs
+index b5a1ca5,5182551..0000000
+--- a/src/ui/modals/help.rs
++++ b/src/ui/modals/help.rs
+@@@ -9,13 -9,10 +9,13 @@@ use ratatui::widgets::{Block, Borders, 
+  
+  const HELP: &[(&str, &str)] = &[
+      ("h / l", "focus left / right panel"),
+-     ("j / k", "move down / up"),
++     ("j / k", "move down / up (preview: scroll)"),
+      ("gg / G", "top / bottom"),
+      ("Ctrl-d / Ctrl-u", "half-page down / up"),
+ -    ("Enter / r", "run highlighted command in background tmux window"),
+ +    (
+ +        "Enter / r",
+ +        "run highlighted command in background tmux window",
+ +    ),
+      ("Nr (e.g. 5r)", "run command N times in parallel"),
+      ("space", "toggle multi-select on highlighted command"),
+      ("R", "run all multi-selected (or all visible in category)"),
+@@@ -35,43 -29,29 +35,55 @@@
+      (":", "command palette"),
+      ("? / :help", "show this help"),
+      ("Esc / Ctrl-c", "clear selection / dismiss modal"),
++     ("click", "focus panel / select list row"),
++     ("double-click", "run command / open job log / activate modal row"),
++     ("Shift+click", "toggle multi-select (commands panel)"),
++     ("wheel", "scroll preview / lists / modals"),
++     ("click outside modal", "dismiss modal (same as Esc)"),
++     ("status bar click", "open engagement/target/ap/pivot/creds; jobs → focus"),
++     ("edit modal click", "place cursor; wheel scroll; dbl-click path pick"),
+      ("q / :q", "quit"),
+      ("", ""),
+ -    ("job log (floating)", "j/k scroll  Ctrl-d/u page  g/G top/bottom  f follow  o tmux"),
+ +    (
+ +        "job log (floating)",
+ +        "j/k scroll  Ctrl-d/u page  g/G top/bottom  f follow  o tmux",
+ +    ),
+      ("", ""),
+      (":engagement", "list/switch/new engagement"),
+      (":target", "list/edit/switch active host target"),
+      (":ap", "list/edit/switch active WiFi access point"),
+ -    (":pivot", "list/edit foothold pivots; tunnel (T) + remote (R) markers"),
+ -    (":exec local|remote", "run commands locally or via scp+ssh on remote pivot (all commands allowed in remote mode)"),
+ +    (
+ +        ":pivot",
+ +        "list/edit foothold pivots; tunnel (T) + remote (R) markers",
+ +    ),
+ +    (
+ +        ":exec local|remote",
+ +        "run commands locally or via scp+ssh on remote pivot (all commands allowed in remote mode)",
+ +    ),
+      (":creds", "list/edit/switch active credential profile"),
+ -    (":variable", "template vars (iface, wordlist, …) — globals; WiFi fields live on :ap"),
+ -    (":variable name=value", "quick-set one variable from the command palette"),
+ +    (
+ +        ":variable",
+ +        "template vars (iface, wordlist, …) — globals; WiFi fields live on :ap",
+ +    ),
+ +    (
+ +        ":variable name=value",
+ +        "quick-set one variable from the command palette",
+ +    ),
+      (":tools", "show which referenced tools are on $PATH"),
+      (":reload", "force-reload command library from disk"),
+++<<<<<<< HEAD
+ +    (
+ +        ":cve",
+ +        "browse/search local CVE index (s sync, K KEV filter)",
+ +    ),
+ +    (
+ +        ":write",
+ +        "save inline-edited command as new id in engagement overrides",
+ +    ),
+++=======
++     (":cve", "browse/search local CVE index (←/→ page, s sync, K KEV, P PoC)"),
++     (":write", "save inline-edited command as new id in engagement overrides"),
+++>>>>>>> origin/main
+  ];
+  
+  pub fn help_line_count() -> usize {
+diff --cc src/ui/modals/pivot.rs
+index 18ded47,15a67c6..0000000
+--- a/src/ui/modals/pivot.rs
++++ b/src/ui/modals/pivot.rs
+@@@ -23,10 -24,11 +24,18 @@@ pub fn render(f: &mut Frame, area: Rect
+      };
+  
+      match &modal.state {
+++<<<<<<< HEAD
+ +        PivotModalState::List { cursor } => render_list(f, inner, app, *cursor),
+ +        PivotModalState::Edit {
+ +            fields, focused, ..
+ +        } => render_edit(f, inner, fields, *focused),
+++=======
++         PivotModalState::List { cursor } => render_list(f, inner, app, *cursor, list_hit),
++         PivotModalState::Edit { fields, focused, .. } => {
++             *list_hit = None;
++             render_edit(f, inner, fields, *focused);
++         }
+++>>>>>>> origin/main
+      }
+  }
+  
+diff --cc src/ui/modals/target.rs
+index c0e09c0,8951c7e..0000000
+--- a/src/ui/modals/target.rs
++++ b/src/ui/modals/target.rs
+@@@ -23,10 -24,11 +24,18 @@@ pub fn render(f: &mut Frame, area: Rect
+      };
+  
+      match &modal.state {
+++<<<<<<< HEAD
+ +        TargetModalState::List { cursor } => render_list(f, inner, app, modal, *cursor),
+ +        TargetModalState::Edit {
+ +            fields, focused, ..
+ +        } => render_edit(f, inner, fields, *focused),
+++=======
++         TargetModalState::List { cursor } => render_list(f, inner, app, modal, *cursor, list_hit),
++         TargetModalState::Edit { fields, focused, .. } => {
++             *list_hit = None;
++             render_edit(f, inner, fields, *focused);
++         }
+++>>>>>>> origin/main
+      }
+  
+      let _ = TargetModal::default;
+diff --cc src/ui/modals/variables.rs
+index b515085,491e0cf..0000000
+--- a/src/ui/modals/variables.rs
++++ b/src/ui/modals/variables.rs
+@@@ -23,9 -24,10 +24,16 @@@ pub fn render(f: &mut Frame, area: Rect
+      };
+  
+      match &modal.state {
+++<<<<<<< HEAD
+ +        VariablesModalState::List { cursor, unset_only } => {
+ +            render_list(f, inner, app, *cursor, *unset_only)
+ +        }
+++=======
++         VariablesModalState::List {
++             cursor,
++             unset_only,
++         } => render_list(f, inner, app, *cursor, *unset_only, list_hit),
+++>>>>>>> origin/main
+          VariablesModalState::Edit {
+              name,
+              value,
+diff --cc src/ui/panels/preview.rs
+index 5939036,563180a..0000000
+--- a/src/ui/panels/preview.rs
++++ b/src/ui/panels/preview.rs
+@@@ -6,19 -7,21 +7,36 @@@ use ratatui::style::{Modifier, Style}
+  use ratatui::text::{Line, Span};
+  use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
+  
+++<<<<<<< HEAD
+ +pub fn render(f: &mut Frame, area: Rect, app: &App) {
+ +    let is_focused = app.focus == Focus::Preview;
+ +    let border_style = if is_focused {
+ +        Theme::border_active()
+ +    } else {
+ +        Theme::border()
+ +    };
+ +    let block = Block::default()
+ +        .borders(Borders::ALL)
+ +        .title(Span::styled(" preview ", Theme::accent_bold()))
+ +        .border_style(border_style)
+ +        .style(Theme::panel());
+++=======
++ pub fn preview_line_count(app: &App) -> usize {
++     build_preview_lines(app).len()
++ }
+++>>>>>>> origin/main
++ 
++ pub fn max_preview_scroll(app: &App, visible_lines: usize) -> usize {
++     preview_line_count(app).saturating_sub(visible_lines.max(1))
++ }
++ 
++ pub fn clamp_preview_scroll(app: &mut App, visible_lines: usize) {
++     app.preview_scroll = app
++         .preview_scroll
++         .min(max_preview_scroll(app, visible_lines));
++ }
+  
++ fn build_preview_lines(app: &App) -> Vec<Line<'static>> {
+      let mut lines: Vec<Line> = Vec::new();
+  
+      match app.current_command() {
