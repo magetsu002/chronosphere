@@ -26,4 +26,6 @@ jobs:
           toolchain: "1.88"
           components: rustfmt, clippy
       - name: Build validated seven-commit branch
-        run: python3 .github/finalize_hardening.py
+        run: |
+          sed -i 's#fix/trust-and-reliability-final#fix/trust-and-reliability-final-v2#' .github/finalize_hardening.py
+          python3 .github/finalize_hardening.py
