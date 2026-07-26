@@ -1,30 +1,4 @@
-   [0m[0m[1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
-[0m     [0m[0m[1m[38;5;12m|[0m
-[0m     [0m[0m[1m[38;5;12m= [0m[0m[1mhelp[0m[0m: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args[0m
-[0m[1m[38;5;14mhelp[0m[0m: change this to[0m
-[0m     [0m[0m[1m[38;5;12m|[0m
-[0m[1m[38;5;12m1239[0m[0m [0m[0m[38;5;9m- [0m[0m        return Err(anyhow!("no profile named {}"[0m[0m[38;5;9m, name[0m[0m));[0m
-[0m[1m[38;5;12m1239[0m[0m [0m[0m[38;5;10m+ [0m[0m        return Err(anyhow!("no profile named {[0m[0m[38;5;10mname[0m[0m}"));[0m
-[0m     [0m[0m[1m[38;5;12m|[0m
-
-[0m[1m[33mwarning[0m[0m[1m: variables can be used directly in the `format!` string[0m
-[0m    [0m[0m[1m[38;5;12m--> [0m[0msrc/mcp/tools.rs:1253:26[0m
-[0m     [0m[0m[1m[38;5;12m|[0m
-[0m[1m[38;5;12m1253[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m        .with_context(|| format!("load engagement '{}'", name))?;[0m
-[0m     [0m[0m[1m[38;5;12m|[0m[0m                          [0m[0m[1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
-[0m     [0m[0m[1m[38;5;12m|[0m
-[0m     [0m[0m[1m[38;5;12m= [0m[0m[1mhelp[0m[0m: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args[0m
-[0m[1m[38;5;14mhelp[0m[0m: change this to[0m
-[0m     [0m[0m[1m[38;5;12m|[0m
-[0m[1m[38;5;12m1253[0m[0m [0m[0m[38;5;9m- [0m[0m        .with_context(|| format!("load engagement '{}'"[0m[0m[38;5;9m, name[0m[0m))?;[0m
-[0m[1m[38;5;12m1253[0m[0m [0m[0m[38;5;10m+ [0m[0m        .with_context(|| format!("load engagement '{[0m[0m[38;5;10mname[0m[0m}'"))?;[0m
-[0m     [0m[0m[1m[38;5;12m|[0m
-
-[0m[1m[33mwarning[0m[0m[1m: variables can be used directly in the `format!` string[0m
-[0m    [0m[0m[1m[38;5;12m--> [0m[0msrc/mcp/tools.rs:1319:9[0m
-[0m     [0m[0m[1m[38;5;12m|[0m
-[0m[1m[38;5;12m1319[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    Err(anyhow!("no command with id '{}'", id))[0m
-[0m     [0m[0m[1m[38;5;12m|[0m[0m         [0m[0m[1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+0m[0m[1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
 [0m     [0m[0m[1m[38;5;12m|[0m
 [0m     [0m[0m[1m[38;5;12m= [0m[0m[1mhelp[0m[0m: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args[0m
 [0m[1m[38;5;14mhelp[0m[0m: change this to[0m
@@ -45,6 +19,19 @@
 [0m[1m[38;5;12m91[0m[0m [0m[0m[38;5;9m- [0m[0m                    return Response::error(id, -32602, format!("invalid params: {}"[0m[0m[38;5;9m, e[0m[0m));[0m
 [0m[1m[38;5;12m91[0m[0m [0m[0m[38;5;10m+ [0m[0m                    return Response::error(id, -32602, format!("invalid params: {[0m[0m[38;5;10me[0m[0m}"));[0m
 [0m   [0m[0m[1m[38;5;12m|[0m
+
+[0m[1m[33mwarning[0m[0m[1m: items after a test module[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/library/mod.rs:140:1[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m140[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0mmod tests {[0m
+[0m    [0m[0m[1m[38;5;12m|[0m[0m [0m[0m[1m[33m^^^^^^^^^[0m
+[0m[1m[38;5;12m...[0m
+[0m[1m[38;5;12m284[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0mfn merge_into(cats: &mut Vec<Category>, file: CategoryFile, source: PathBuf) {[0m
+[0m    [0m[0m[1m[38;5;12m|[0m[0m [0m[0m[1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m    [0m[0m[1m[38;5;12m= [0m[0m[1mhelp[0m[0m: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#items_after_test_module[0m
+[0m    [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: `#[warn(clippy::items_after_test_module)]` on by default[0m
+[0m    [0m[0m[1m[38;5;12m= [0m[0m[1mhelp[0m[0m: [0m[0mmove the items to before the test module was defined[0m
 
 [0m[1m[33mwarning[0m[0m[1m: the following explicit lifetimes could be elided: 'a[0m
 [0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/path_complete.rs:258:22[0m
@@ -70,55 +57,6 @@
 [0m    [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: `#[warn(clippy::unnecessary_sort_by)]` on by default[0m
 
 [0m[1m[33mwarning[0m[0m[1m: variables can be used directly in the `format!` string[0m
-[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/library/mod.rs:177:9[0m
-[0m    [0m[0m[1m[38;5;12m|[0m
-[0m[1m[38;5;12m177[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m        assert!(missing.is_empty(), "missing helpers: {:#?}", missing);[0m
-[0m    [0m[0m[1m[38;5;12m|[0m[0m         [0m[0m[1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
-[0m    [0m[0m[1m[38;5;12m|[0m
-[0m    [0m[0m[1m[38;5;12m= [0m[0m[1mhelp[0m[0m: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args[0m
-[0m[1m[38;5;14mhelp[0m[0m: change this to[0m
-[0m    [0m[0m[1m[38;5;12m|[0m
-[0m[1m[38;5;12m177[0m[0m [0m[0m[38;5;9m- [0m[0m        assert!(missing.is_empty(), "missing helpers: {:#?}"[0m[0m[38;5;9m, missing[0m[0m);[0m
-[0m[1m[38;5;12m177[0m[0m [0m[0m[38;5;10m+ [0m[0m        assert!(missing.is_empty(), "missing helpers: {[0m[0m[38;5;10mmissing[0m[0m:#?}");[0m
-[0m    [0m[0m[1m[38;5;12m|[0m
-
-[0m[1m[33mwarning[0m[0m[1m: field assignment outside of initializer for an instance created with Default::default()[0m
-[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/library/mod.rs:184:9[0m
-[0m    [0m[0m[1m[38;5;12m|[0m
-[0m[1m[38;5;12m184[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m[1m[33m/[0m[0m [0m[0m        ctx.profile = Some(crate::engagement::CredentialProfile {[0m
-[0m[1m[38;5;12m185[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m[1m[33m|[0m[0m [0m[0m            name: "t".into(),[0m
-[0m[1m[38;5;12m186[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m[1m[33m|[0m[0m [0m[0m            username: "u".into(),[0m
-[0m[1m[38;5;12m187[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m[1m[33m|[0m[0m [0m[0m            domain: Some("D".into()),[0m
-[0m[1m[38;5;12m...[0m[0m   [0m[0m[1m[33m|[0m
-[0m[1m[38;5;12m192[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m[1m[33m|[0m[0m [0m[0m            notes: None,[0m
-[0m[1m[38;5;12m193[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m[1m[33m|[0m[0m [0m[0m        });[0m
-[0m    [0m[0m[1m[38;5;12m|[0m[0m [0m[0m[1m[33m|___________^[0m
-[0m    [0m[0m[1m[38;5;12m|[0m
-[0m[1m[38;5;10mnote[0m[0m: consider initializing the variable with `render::context::RenderContext { profile: Some(crate::engagement::CredentialProfile {[0m
-[0m                  name: "t".into(),[0m
-[0m                  username: "u".into(),[0m
-[0m                  domain: Some("D".into()),[0m
-[0m                  kind: crate::engagement::CredKind::Plaintext,[0m
-[0m                  password: Some("p".into()),[0m
-[0m                  nt_hash: None,[0m
-[0m                  ticket_path: None,[0m
-[0m                  notes: None,[0m
-[0m              }), target: Some(crate::engagement::Target {[0m
-[0m                  name: "x".into(),[0m
-[0m                  ip: Some("1.1.1.1".into()),[0m
-[0m                  hostname: Some("x.local".into()),[0m
-[0m                  dc_name: Some("DC".into()),[0m
-[0m                  lhost: Some("10.10.14.5".into()),[0m
-[0m                  lport: Some(4444),[0m
-[0m                  notes: None,[0m
-[0m              }), ..Default::default() }` and removing relevant reassignments[0m
-[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/library/mod.rs:183:9[0m
-[0m    [0m[0m[1m[38;5;12m|[0m
-[0m[1m[38;5;12m183[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m        let mut ctx = crate::render::RenderContext::default();[0m
-[0m    [0m[0m[1m[38;5;12m|[0m[0m         [0m[0m[1m[38;5;10m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
-[0m    [0m[0m[1m[38;5;12m= [0m[0m[1mhelp[0m[0m: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#field_reassign_with_default[0m
-
-[0m[1m[33mwarning[0m[0m[1m: variables can be used directly in the `format!` string[0m
 [0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/render/condition.rs:118:36[0m
 [0m    [0m[0m[1m[38;5;12m|[0m
 [0m[1m[38;5;12m118[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m                    .ok_or_else(|| format!("unterminated string at {}", i))?;[0m
@@ -130,18 +68,6 @@
 [0m[1m[38;5;12m118[0m[0m [0m[0m[38;5;9m- [0m[0m                    .ok_or_else(|| format!("unterminated string at {}"[0m[0m[38;5;9m, i[0m[0m))?;[0m
 [0m[1m[38;5;12m118[0m[0m [0m[0m[38;5;10m+ [0m[0m                    .ok_or_else(|| format!("unterminated string at {[0m[0m[38;5;10mi[0m[0m}"))?;[0m
 [0m    [0m[0m[1m[38;5;12m|[0m
-
-[0m[1m[33mwarning[0m[0m[1m: variables can be used directly in the `format!` string[0m
-[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/library/mod.rs:239:9[0m
-[0m    [0m[0m[1m[38;5;12m|[0m
-[0m[1m[38;5;12m239[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m[1m[33m/[0m[0m [0m[0m        assert!([0m
-[0m[1m[38;5;12m240[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m[1m[33m|[0m[0m [0m[0m            bad.is_empty(),[0m
-[0m[1m[38;5;12m241[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m[1m[33m|[0m[0m [0m[0m            "cut -d'\\' breaks on macOS/BSD (use awk gsub or cut -d$'\\134'): {:#?}",[0m
-[0m[1m[38;5;12m242[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m[1m[33m|[0m[0m [0m[0m            bad[0m
-[0m[1m[38;5;12m243[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m[1m[33m|[0m[0m [0m[0m        );[0m
-[0m    [0m[0m[1m[38;5;12m|[0m[0m [0m[0m[1m[33m|_________^[0m
-[0m    [0m[0m[1m[38;5;12m|[0m
-[0m    [0m[0m[1m[38;5;12m= [0m[0m[1mhelp[0m[0m: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args[0m
 
 [0m[1m[33mwarning[0m[0m[1m: variables can be used directly in the `format!` string[0m
 [0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/render/condition.rs:142:33[0m
@@ -246,6 +172,67 @@
 [0m[1m[38;5;12m203[0m[0m [0m[0m[38;5;9m- [0m[0m        Some(format!("{}.{}"[0m[0m[38;5;9m, dc, dom[0m[0m))[0m
 [0m[1m[38;5;12m203[0m[0m [0m[0m[38;5;10m+ [0m[0m        Some(format!("{[0m[0m[38;5;10mdc[0m[0m}.{[0m[0m[38;5;10mdom[0m[0m}"))[0m
 [0m    [0m[0m[1m[38;5;12m|[0m
+
+[0m[1m[33mwarning[0m[0m[1m: variables can be used directly in the `format!` string[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/library/mod.rs:177:9[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m177[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m        assert!(missing.is_empty(), "missing helpers: {:#?}", missing);[0m
+[0m    [0m[0m[1m[38;5;12m|[0m[0m         [0m[0m[1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m    [0m[0m[1m[38;5;12m= [0m[0m[1mhelp[0m[0m: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args[0m
+[0m[1m[38;5;14mhelp[0m[0m: change this to[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m177[0m[0m [0m[0m[38;5;9m- [0m[0m        assert!(missing.is_empty(), "missing helpers: {:#?}"[0m[0m[38;5;9m, missing[0m[0m);[0m
+[0m[1m[38;5;12m177[0m[0m [0m[0m[38;5;10m+ [0m[0m        assert!(missing.is_empty(), "missing helpers: {[0m[0m[38;5;10mmissing[0m[0m:#?}");[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+
+[0m[1m[33mwarning[0m[0m[1m: field assignment outside of initializer for an instance created with Default::default()[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/library/mod.rs:184:9[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m184[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m[1m[33m/[0m[0m [0m[0m        ctx.profile = Some(crate::engagement::CredentialProfile {[0m
+[0m[1m[38;5;12m185[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m[1m[33m|[0m[0m [0m[0m            name: "t".into(),[0m
+[0m[1m[38;5;12m186[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m[1m[33m|[0m[0m [0m[0m            username: "u".into(),[0m
+[0m[1m[38;5;12m187[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m[1m[33m|[0m[0m [0m[0m            domain: Some("D".into()),[0m
+[0m[1m[38;5;12m...[0m[0m   [0m[0m[1m[33m|[0m
+[0m[1m[38;5;12m192[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m[1m[33m|[0m[0m [0m[0m            notes: None,[0m
+[0m[1m[38;5;12m193[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m[1m[33m|[0m[0m [0m[0m        });[0m
+[0m    [0m[0m[1m[38;5;12m|[0m[0m [0m[0m[1m[33m|___________^[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;10mnote[0m[0m: consider initializing the variable with `render::context::RenderContext { profile: Some(crate::engagement::CredentialProfile {[0m
+[0m                  name: "t".into(),[0m
+[0m                  username: "u".into(),[0m
+[0m                  domain: Some("D".into()),[0m
+[0m                  kind: crate::engagement::CredKind::Plaintext,[0m
+[0m                  password: Some("p".into()),[0m
+[0m                  nt_hash: None,[0m
+[0m                  ticket_path: None,[0m
+[0m                  notes: None,[0m
+[0m              }), target: Some(crate::engagement::Target {[0m
+[0m                  name: "x".into(),[0m
+[0m                  ip: Some("1.1.1.1".into()),[0m
+[0m                  hostname: Some("x.local".into()),[0m
+[0m                  dc_name: Some("DC".into()),[0m
+[0m                  lhost: Some("10.10.14.5".into()),[0m
+[0m                  lport: Some(4444),[0m
+[0m                  notes: None,[0m
+[0m              }), ..Default::default() }` and removing relevant reassignments[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/library/mod.rs:183:9[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m183[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m        let mut ctx = crate::render::RenderContext::default();[0m
+[0m    [0m[0m[1m[38;5;12m|[0m[0m         [0m[0m[1m[38;5;10m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[0m    [0m[0m[1m[38;5;12m= [0m[0m[1mhelp[0m[0m: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#field_reassign_with_default[0m
+
+[0m[1m[33mwarning[0m[0m[1m: variables can be used directly in the `format!` string[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/library/mod.rs:239:9[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m239[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m[1m[33m/[0m[0m [0m[0m        assert!([0m
+[0m[1m[38;5;12m240[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m[1m[33m|[0m[0m [0m[0m            bad.is_empty(),[0m
+[0m[1m[38;5;12m241[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m[1m[33m|[0m[0m [0m[0m            "cut -d'\\' breaks on macOS/BSD (use awk gsub or cut -d$'\\134'): {:#?}",[0m
+[0m[1m[38;5;12m242[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m[1m[33m|[0m[0m [0m[0m            bad[0m
+[0m[1m[38;5;12m243[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m[1m[33m|[0m[0m [0m[0m        );[0m
+[0m    [0m[0m[1m[38;5;12m|[0m[0m [0m[0m[1m[33m|_________^[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m    [0m[0m[1m[38;5;12m= [0m[0m[1mhelp[0m[0m: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args[0m
 
 [0m[1m[33mwarning[0m[0m[1m: variables can be used directly in the `format!` string[0m
 [0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/render/helpers.rs:100:17[0m
@@ -1099,24 +1086,27 @@
 
 [1m[33mwarning[0m[1m:[0m `chronosphere` (bin "chronosphere") generated 231 warnings (run `cargo clippy --fix --bin "chronosphere"` to apply 209 suggestions)
 [1m[33mwarning[0m[1m:[0m `chronosphere` (bin "chronosphere" test) generated 240 warnings (229 duplicates) (run `cargo clippy --fix --bin "chronosphere" --tests` to apply 3 suggestions)
-[1m[32m    Finished[0m `dev` profile [unoptimized + debuginfo] target(s) in 41.95s
+[1m[32m    Finished[0m `dev` profile [unoptimized + debuginfo] target(s) in 31.16s
 
-$ cargo test --locked --all-targets
+$ bash -lc RUST_BACKTRACE=1 cargo test --locked --all-targets -- --test-threads=1 --nocapture
 
 running 69 tests
-test config::tests::format_storage_size_scales ... ok
 test clipboard::tests::format_message_includes_tmux_paste_hint ... ok
+test config::tests::format_storage_size_scales ... ok
 test cve::filter::tests::builds_kev_filter ... ok
+test cve::filter::tests::builds_poc_filter_empty_index ... ok
 test cve::filter::tests::count_query_ignores_limit ... ok
 test cve::filter::tests::summary_query_includes_offset ... ok
-test cve::filter::tests::builds_poc_filter_empty_index ... ok
+test cve::poc_index::tests::loads_ready_pocs_only ... ok
 test cve::providers::kev::tests::parses_kev_entry_camel_case ... ok
 test cve::providers::nvd::tests::build_month_url_uses_publish_dates ... ok
 test cve::providers::nvd::tests::month_date_bounds_covers_full_month ... ok
-test cve::providers::osv::tests::cve_as_osv_id ... ok
 test cve::providers::nvd::tests::parses_nvd_snippet ... ok
+test cve::providers::osv::tests::cve_as_osv_id ... ok
 test cve::providers::osv::tests::ghsa_with_cve_alias ... ok
-test cve::poc_index::tests::loads_ready_pocs_only ... ok
+test cve::rate_limit::tests::limiter_enforces_interval ... ok
+test cve::store::tests::summaries_paginate_and_count ... ok
+test cve::store::tests::upsert_and_search ... ok
 test cve::sync::tests::parse_month_accepts_compact_form ... ok
 test cve::sync::tests::parse_month_accepts_dash_form ... ok
 test cve::sync::tests::parse_month_by_modified ... ok
@@ -1131,11 +1121,11 @@ test input::tests::ctrl_h_is_backspace ... ok
 test input::tests::ctrl_w_deletes_word ... ok
 test input::tests::del_char_is_backspace ... ok
 test input::tests::delete_key_is_backspace ... ok
-test cve::store::tests::upsert_and_search ... ok
-test cve::store::tests::summaries_paginate_and_count ... ok
-test library::tests::smb_harvest_parsers_extract_usernames ... ok
-test cve::rate_limit::tests::limiter_enforces_interval ... ok
 test library::tests::loads_real_command_library ... ok
+test library::tests::referenced_helpers_all_exist ... ok
+test library::tests::smb_harvest_parsers_extract_usernames ... ok
+test library::tests::templates_avoid_broken_cut_backslash_delimiter ... ok
+test library::tests::when_conditions_parse ... ok
 test path_complete::tests::lcp_works ... ok
 test path_complete::tests::looks_like_path_after_flag ... ok
 test path_complete::tests::looks_like_path_slash ... ok
@@ -1170,23 +1160,13 @@ test ui::modals::job_log::tests::incremental_tail_appends_new_lines ... ok
 test ui::modals::job_log::tests::manual_scroll_clamped ... ok
 test ui::splash::tests::handles_small_area ... ok
 test ui::splash::tests::renders_without_panic ... ok
-test library::tests::referenced_helpers_all_exist ... ok
-test library::tests::templates_avoid_broken_cut_backslash_delimiter ... ok
-test library::tests::when_conditions_parse ... ok
 
 failures:
-
----- render::condition::tests::parse_errors_fail_open stdout ----
-
-thread 'render::condition::tests::parse_errors_fail_open' panicked at src/render/condition.rs:346:9:
-assertion failed: evaluate("blah blah blah", &ctx_with(CredKind::Plaintext, false))
-note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
-
 
 failures:
     render::condition::tests::parse_errors_fail_open
 
-test result: FAILED. 68 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
+test result: FAILED. 68 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.42s
 
 
 [1m[32m   Compiling[0m cfg-if v1.0.4
@@ -1201,23 +1181,23 @@ test result: FAILED. 68 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out;
 [1m[32m   Compiling[0m lock_api v0.4.14
 [1m[32m   Compiling[0m bitflags v2.13.1
 [1m[32m   Compiling[0m yoke v0.8.3
-[1m[32m   Compiling[0m itoa v1.0.18
 [1m[32m   Compiling[0m once_cell v1.21.4
 [1m[32m   Compiling[0m bytes v1.12.1
+[1m[32m   Compiling[0m itoa v1.0.18
 [1m[32m   Compiling[0m zerovec v0.11.6
 [1m[32m   Compiling[0m memchr v2.8.3
-[1m[32m   Compiling[0m futures-sink v0.3.33
-[1m[32m   Compiling[0m serde_core v1.0.229
-[1m[32m   Compiling[0m simd-adler32 v0.3.10
 [1m[32m   Compiling[0m errno v0.3.14
-[1m[32m   Compiling[0m signal-hook-registry v1.4.8
 [1m[32m   Compiling[0m parking_lot_core v0.9.12
 [1m[32m   Compiling[0m mio v1.2.2
+[1m[32m   Compiling[0m signal-hook-registry v1.4.8
 [1m[32m   Compiling[0m parking_lot v0.12.5
+[1m[32m   Compiling[0m futures-sink v0.3.33
+[1m[32m   Compiling[0m serde_core v1.0.229
 [1m[32m   Compiling[0m socket2 v0.6.5
+[1m[32m   Compiling[0m simd-adler32 v0.3.10
 [1m[32m   Compiling[0m tokio v1.53.1
-[1m[32m   Compiling[0m getrandom v0.2.17
 [1m[32m   Compiling[0m futures-channel v0.3.33
+[1m[32m   Compiling[0m getrandom v0.2.17
 [1m[32m   Compiling[0m tinystr v0.8.3
 [1m[32m   Compiling[0m adler2 v2.0.1
 [1m[32m   Compiling[0m litemap v0.8.2
@@ -1227,16 +1207,16 @@ test result: FAILED. 68 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out;
 [1m[32m   Compiling[0m crc32fast v1.5.0
 [1m[32m   Compiling[0m potential_utf v0.1.5
 [1m[32m   Compiling[0m zerotrie v0.2.4
+[1m[32m   Compiling[0m percent-encoding v2.3.2
+[1m[32m   Compiling[0m strsim v0.11.1
 [1m[32m   Compiling[0m slab v0.4.12
-[1m[32m   Compiling[0m utf8_iter v1.0.4
 [1m[32m   Compiling[0m futures-io v0.3.33
 [1m[32m   Compiling[0m futures-task v0.3.33
-[1m[32m   Compiling[0m strsim v0.11.1
-[1m[32m   Compiling[0m percent-encoding v2.3.2
-[1m[32m   Compiling[0m futures-util v0.3.33
+[1m[32m   Compiling[0m utf8_iter v1.0.4
 [1m[32m   Compiling[0m icu_collections v2.2.0
-[1m[32m   Compiling[0m icu_provider v2.2.0
+[1m[32m   Compiling[0m futures-util v0.3.33
 [1m[32m   Compiling[0m serde v1.0.229
+[1m[32m   Compiling[0m icu_provider v2.2.0
 [1m[32m   Compiling[0m flate2 v1.1.9
 [1m[32m   Compiling[0m zerocopy v0.8.55
 [1m[32m   Compiling[0m http v1.4.2
@@ -1248,109 +1228,109 @@ test result: FAILED. 68 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out;
 [1m[32m   Compiling[0m icu_normalizer_data v2.2.0
 [1m[32m   Compiling[0m tracing-core v0.1.36
 [1m[32m   Compiling[0m untrusted v0.9.0
-[1m[32m   Compiling[0m ring v0.17.14
 [1m[32m   Compiling[0m darling_core v0.23.0
-[1m[32m   Compiling[0m icu_properties v2.2.0
+[1m[32m   Compiling[0m ring v0.17.14
 [1m[32m   Compiling[0m icu_normalizer v2.2.0
+[1m[32m   Compiling[0m icu_properties v2.2.0
+[1m[32m   Compiling[0m tower-service v0.3.3
+[1m[32m   Compiling[0m ryu v1.0.23
 [1m[32m   Compiling[0m try-lock v0.2.5
 [1m[32m   Compiling[0m linux-raw-sys v0.4.15
-[1m[32m   Compiling[0m ryu v1.0.23
-[1m[32m   Compiling[0m tower-service v0.3.3
 [1m[32m   Compiling[0m either v1.17.0
-[1m[32m   Compiling[0m idna_adapter v1.2.2
-[1m[32m   Compiling[0m rustix v0.38.44
+[1m[32m   Compiling[0m darling_macro v0.23.0
 [1m[32m   Compiling[0m want v0.3.1
+[1m[32m   Compiling[0m rustix v0.38.44
 [1m[32m   Compiling[0m tracing v0.1.44
 [1m[32m   Compiling[0m num-traits v0.2.19
-[1m[32m   Compiling[0m darling_macro v0.23.0
+[1m[32m   Compiling[0m idna_adapter v1.2.2
+[1m[32m   Compiling[0m rustls-webpki v0.103.13
 [1m[32m   Compiling[0m signal-hook v0.3.18
 [1m[32m   Compiling[0m httparse v1.10.1
-[1m[32m   Compiling[0m rustls-webpki v0.103.13
 [1m[32m   Compiling[0m form_urlencoded v1.2.2
 [1m[32m   Compiling[0m subtle v2.6.1
-[1m[32m   Compiling[0m unicode-segmentation v1.13.3
-[1m[32m   Compiling[0m linux-raw-sys v0.12.1
-[1m[32m   Compiling[0m compression-core v0.4.32
-[1m[32m   Compiling[0m allocator-api2 v0.2.21
 [1m[32m   Compiling[0m foldhash v0.1.5
 [1m[32m   Compiling[0m utf8parse v0.2.2
+[1m[32m   Compiling[0m allocator-api2 v0.2.21
+[1m[32m   Compiling[0m linux-raw-sys v0.12.1
+[1m[32m   Compiling[0m compression-core v0.4.32
+[1m[32m   Compiling[0m unicode-segmentation v1.13.3
 [1m[32m   Compiling[0m atomic-waker v1.1.2
-[1m[32m   Compiling[0m anstyle-parse v1.0.0
 [1m[32m   Compiling[0m hyper v1.11.0
-[1m[32m   Compiling[0m hashbrown v0.15.5
-[1m[32m   Compiling[0m rustix v1.1.4
 [1m[32m   Compiling[0m compression-codecs v0.4.38
+[1m[32m   Compiling[0m hashbrown v0.15.5
+[1m[32m   Compiling[0m anstyle-parse v1.0.0
+[1m[32m   Compiling[0m rustix v1.1.4
 [1m[32m   Compiling[0m rustls v0.23.42
-[1m[32m   Compiling[0m darling v0.23.0
 [1m[32m   Compiling[0m ahash v0.8.12
 [1m[32m   Compiling[0m signal-hook-mio v0.2.5
-[1m[32m   Compiling[0m itertools v0.13.0
 [1m[32m   Compiling[0m idna v1.1.0
+[1m[32m   Compiling[0m darling v0.23.0
+[1m[32m   Compiling[0m itertools v0.13.0
 [1m[32m   Compiling[0m castaway v0.2.4
 [1m[32m   Compiling[0m fdeflate v0.3.7
 [1m[32m   Compiling[0m sync_wrapper v1.0.2
-[1m[32m   Compiling[0m regex-syntax v0.8.11
-[1m[32m   Compiling[0m base64 v0.22.1
-[1m[32m   Compiling[0m static_assertions v1.1.0
-[1m[32m   Compiling[0m tower-layer v0.3.3
-[1m[32m   Compiling[0m ipnet v2.12.0
-[1m[32m   Compiling[0m anstyle-query v1.1.5
-[1m[32m   Compiling[0m hashbrown v0.17.1
-[1m[32m   Compiling[0m colorchoice v1.0.5
-[1m[32m   Compiling[0m anstyle v1.0.14
 [1m[32m   Compiling[0m is_terminal_polyfill v1.70.2
-[1m[32m   Compiling[0m pxfm v0.1.30
+[1m[32m   Compiling[0m ipnet v2.12.0
+[1m[32m   Compiling[0m tower-layer v0.3.3
+[1m[32m   Compiling[0m hashbrown v0.17.1
+[1m[32m   Compiling[0m anstyle v1.0.14
 [1m[32m   Compiling[0m unicode-width v0.1.14
-[1m[32m   Compiling[0m unicode-truncate v1.1.0
-[1m[32m   Compiling[0m anstream v1.0.0
-[1m[32m   Compiling[0m indexmap v2.14.0
+[1m[32m   Compiling[0m static_assertions v1.1.0
+[1m[32m   Compiling[0m base64 v0.22.1
+[1m[32m   Compiling[0m regex-syntax v0.8.11
+[1m[32m   Compiling[0m anstyle-query v1.1.5
+[1m[32m   Compiling[0m colorchoice v1.0.5
+[1m[32m   Compiling[0m pxfm v0.1.30
 [1m[32m   Compiling[0m tokio-rustls v0.26.4
-[1m[32m   Compiling[0m instability v0.3.12
+[1m[32m   Compiling[0m anstream v1.0.0
 [1m[32m   Compiling[0m regex-automata v0.4.16
-[1m[32m   Compiling[0m gethostname v1.1.0
 [1m[32m   Compiling[0m hyper-util v0.1.20
 [1m[32m   Compiling[0m moxcms v0.8.1
-[1m[32m   Compiling[0m tower v0.5.3
 [1m[32m   Compiling[0m compact_str v0.8.2
+[1m[32m   Compiling[0m indexmap v2.14.0
+[1m[32m   Compiling[0m unicode-truncate v1.1.0
+[1m[32m   Compiling[0m gethostname v1.1.0
+[1m[32m   Compiling[0m tower v0.5.3
+[1m[32m   Compiling[0m instability v0.3.12
 [1m[32m   Compiling[0m png v0.18.1
 [1m[32m   Compiling[0m strum v0.26.3
 [1m[32m   Compiling[0m url v2.5.8
 [1m[32m   Compiling[0m crossterm v0.28.1
 [1m[32m   Compiling[0m hashbrown v0.14.5
-[1m[32m   Compiling[0m inotify-sys v0.1.8
+[1m[32m   Compiling[0m lru v0.12.5
 [1m[32m   Compiling[0m async-compression v0.4.42
 [1m[32m   Compiling[0m zmij v1.0.23
-[1m[32m   Compiling[0m lru v0.12.5
+[1m[32m   Compiling[0m inotify-sys v0.1.8
 [1m[32m   Compiling[0m crossbeam-utils v0.8.22
 [1m[32m   Compiling[0m ppv-lite86 v0.2.21
 [1m[32m   Compiling[0m http-body-util v0.1.4
 [1m[32m   Compiling[0m webpki-roots v1.0.9
 [1m[32m   Compiling[0m tokio-util v0.7.19
-[1m[32m   Compiling[0m toml_datetime v0.6.11
 [1m[32m   Compiling[0m serde_spanned v0.6.9
+[1m[32m   Compiling[0m toml_datetime v0.6.11
 [1m[32m   Compiling[0m rand_core v0.6.4
-[1m[32m   Compiling[0m option-ext v0.2.0
-[1m[32m   Compiling[0m bytemuck v1.25.2
-[1m[32m   Compiling[0m toml_write v0.1.2
 [1m[32m   Compiling[0m x11rb-protocol v0.13.2
-[1m[32m   Compiling[0m unicode-width v0.2.0
-[1m[32m   Compiling[0m winnow v0.7.15
+[1m[32m   Compiling[0m option-ext v0.2.0
 [1m[32m   Compiling[0m lazy_static v1.5.0
-[1m[32m   Compiling[0m bitflags v1.3.2
 [1m[32m   Compiling[0m cassowary v0.3.0
+[1m[32m   Compiling[0m bitflags v1.3.2
+[1m[32m   Compiling[0m toml_write v0.1.2
+[1m[32m   Compiling[0m bytemuck v1.25.2
 [1m[32m   Compiling[0m clap_lex v1.1.0
-[1m[32m   Compiling[0m same-file v1.0.6
+[1m[32m   Compiling[0m unicode-width v0.2.0
 [1m[32m   Compiling[0m byteorder-lite v0.1.0
+[1m[32m   Compiling[0m winnow v0.7.15
+[1m[32m   Compiling[0m same-file v1.0.6
+[1m[32m   Compiling[0m walkdir v2.5.0
 [1m[32m   Compiling[0m image v0.25.10
 [1m[32m   Compiling[0m toml_edit v0.22.27
 [1m[32m   Compiling[0m x11rb v0.13.2
-[1m[32m   Compiling[0m walkdir v2.5.0
-[1m[32m   Compiling[0m clap_builder v4.6.2
 [1m[32m   Compiling[0m ratatui v0.29.0
+[1m[32m   Compiling[0m clap_builder v4.6.2
 [1m[32m   Compiling[0m inotify v0.9.6
 [1m[32m   Compiling[0m sharded-slab v0.1.7
-[1m[32m   Compiling[0m tower-http v0.6.11
 [1m[32m   Compiling[0m dirs-sys v0.4.1
+[1m[32m   Compiling[0m tower-http v0.6.11
 [1m[32m   Compiling[0m rand_chacha v0.3.1
 [1m[32m   Compiling[0m hyper-rustls v0.27.9
 [1m[32m   Compiling[0m crossbeam-channel v0.5.16
@@ -1362,22 +1342,22 @@ test result: FAILED. 68 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out;
 [1m[32m   Compiling[0m serde_urlencoded v0.7.1
 [1m[32m   Compiling[0m tracing-log v0.2.0
 [1m[32m   Compiling[0m futures-executor v0.3.33
-[1m[32m   Compiling[0m mio v0.8.11
-[1m[32m   Compiling[0m rtoolbox v0.0.5
 [1m[32m   Compiling[0m filetime v0.2.29
+[1m[32m   Compiling[0m rtoolbox v0.0.5
+[1m[32m   Compiling[0m mio v0.8.11
 [1m[32m   Compiling[0m thread_local v1.1.10
-[1m[32m   Compiling[0m fallible-iterator v0.3.0
+[1m[32m   Compiling[0m home v0.5.12
 [1m[32m   Compiling[0m nu-ansi-term v0.50.3
 [1m[32m   Compiling[0m fallible-streaming-iterator v0.1.9
-[1m[32m   Compiling[0m home v0.5.12
+[1m[32m   Compiling[0m fallible-iterator v0.3.0
 [1m[32m   Compiling[0m iana-time-zone v0.1.65
-[1m[32m   Compiling[0m rusqlite v0.32.1
-[1m[32m   Compiling[0m which v6.0.3
 [1m[32m   Compiling[0m chrono v0.4.45
+[1m[32m   Compiling[0m rusqlite v0.32.1
 [1m[32m   Compiling[0m tracing-subscriber v0.3.23
+[1m[32m   Compiling[0m notify v6.1.1
+[1m[32m   Compiling[0m which v6.0.3
 [1m[32m   Compiling[0m include_dir v0.7.4
 [1m[32m   Compiling[0m thiserror v1.0.69
-[1m[32m   Compiling[0m notify v6.1.1
 [1m[32m   Compiling[0m rpassword v7.5.4
 [1m[32m   Compiling[0m futures v0.3.33
 [1m[32m   Compiling[0m clap v4.6.4
@@ -1386,8 +1366,8 @@ test result: FAILED. 68 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out;
 [1m[32m   Compiling[0m tui-textarea v0.7.0
 [1m[32m   Compiling[0m rand v0.8.7
 [1m[32m   Compiling[0m directories v5.0.1
-[1m[32m   Compiling[0m arboard v3.6.1
 [1m[32m   Compiling[0m anyhow v1.0.104
+[1m[32m   Compiling[0m arboard v3.6.1
 [1m[32m   Compiling[0m toml v0.8.23
 [1m[32m   Compiling[0m nucleo-matcher v0.3.1
 [1m[32m   Compiling[0m shell-words v1.1.1
@@ -1543,16 +1523,35 @@ test result: FAILED. 68 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out;
 [0m   [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: `Action` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis[0m
 
 [1m[33mwarning[0m[1m:[0m `chronosphere` (bin "chronosphere" test) generated 14 warnings
-[1m[32m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 45.66s
+[1m[32m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 33.71s
 [1m[32m     Running[0m unittests src/main.rs (target/debug/deps/chronosphere-7065bfd07dada012)
+
+thread 'render::condition::tests::parse_errors_fail_open' panicked at src/render/condition.rs:346:9:
+assertion failed: evaluate("blah blah blah", &ctx_with(CredKind::Plaintext, false))
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/6b00bc3880198600130e1cf62b8f8a93494488cc/library/std/src/panicking.rs:697:5
+   1: core::panicking::panic_fmt
+             at /rustc/6b00bc3880198600130e1cf62b8f8a93494488cc/library/core/src/panicking.rs:75:14
+   2: core::panicking::panic
+             at /rustc/6b00bc3880198600130e1cf62b8f8a93494488cc/library/core/src/panicking.rs:145:5
+   3: chronosphere::render::condition::tests::parse_errors_fail_open
+             at ./src/render/condition.rs:346:9
+   4: chronosphere::render::condition::tests::parse_errors_fail_open::{{closure}}
+             at ./src/render/condition.rs:345:32
+   5: core::ops::function::FnOnce::call_once
+             at /rustc/6b00bc3880198600130e1cf62b8f8a93494488cc/library/core/src/ops/function.rs:250:5
+   6: core::ops::function::FnOnce::call_once
+             at /rustc/6b00bc3880198600130e1cf62b8f8a93494488cc/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
 [1m[31merror[0m[1m:[0m test failed, to rerun pass `--bin chronosphere`
 
 Traceback (most recent call last):
-  File "/tmp/replay_hardening_v3.py", line 444, in main
-    run("cargo", "test", "--locked", "--all-targets")
+  File "/tmp/replay_hardening_v3.py", line 445, in main
+    run("bash", "-lc", "RUST_BACKTRACE=1 cargo test --locked --all-targets -- --test-threads=1 --nocapture")
   File "/tmp/replay_hardening_v3.py", line 24, in run
     raise RuntimeError(f"command failed ({result.returncode}): {' '.join(args)}")
-RuntimeError: command failed (101): cargo test --locked --all-targets
+RuntimeError: command failed (101): bash -lc RUST_BACKTRACE=1 cargo test --locked --all-targets -- --test-threads=1 --nocapture
 
-$ git reset --hard d01cd79b28c1a294f3ef7f1fac8fa3d098e61d3f
-HEAD is now at d01cd79 chore: rerun replay after compile-gap fixes
+$ git reset --hard db80c7da191f1e17f76c3384fa78bcb6f5e8afdb
+HEAD is now at db80c7d chore: rerun replay with serial test diagnostics
