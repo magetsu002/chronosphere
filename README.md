@@ -85,7 +85,7 @@ Inside the TUI, press `?` for the full keymap. The basics:
 
 ### Local build (macOS, Linux)
 
-Needs Rust ≥ 1.85 (edition 2024).
+Needs Rust ≥ 1.88 (edition 2024).
 
 ```bash
 cargo install --path .                      # installs into ~/.cargo/bin/chronosphere
