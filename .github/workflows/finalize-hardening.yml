@@ -26,6 +26,19 @@ jobs:
           toolchain: "1.88"
           components: rustfmt, clippy
       - name: Build validated seven-commit branch
+        shell: bash
         run: |
           sed -i 's#fix/trust-and-reliability-final#fix/trust-and-reliability-final-v2#' .github/finalize_hardening.py
-          python3 .github/finalize_hardening.py
+          set +e
+          python3 .github/finalize_hardening.py > /tmp/finalize-hardening.log 2>&1
+          status=$?
+          set -e
+          cat /tmp/finalize-hardening.log
+          if [ "$status" -ne 0 ]; then
+            cp /tmp/finalize-hardening.log .github/finalize-failure.txt
+            git switch chore/trust-reliability-closeout
+            git add .github/finalize-failure.txt
+            git commit -m "chore: capture hardening closeout failure"
+            git push origin HEAD:chore/trust-reliability-closeout
+            exit "$status"
+          fi
