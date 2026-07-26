@@ -1,0 +1,71 @@
+name: Integrate latest main
+
+on:
+  push:
+    branches: [fix/trust-and-reliability-v1]
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/trust-and-reliability-v1
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.88"
+          components: rustfmt, clippy
+      - name: Merge latest main
+        id: merge
+        shell: bash
+        run: |
+          git config user.name "Chronosphere Hardening"
+          git config user.email "actions@users.noreply.github.com"
+          git fetch origin main
+          set +e
+          git merge --no-commit --no-ff origin/main > /tmp/merge.log 2>&1
+          status=$?
+          set -e
+          echo "status=${status}" >> "$GITHUB_OUTPUT"
+          cat /tmp/merge.log
+          if [ "$status" -ne 0 ]; then
+            git diff --name-only --diff-filter=U > merge-conflicts.txt
+            git diff --cc > merge-conflicts.patch
+          fi
+      - name: Upload merge conflicts
+        if: steps.merge.outputs.status != '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: main-merge-conflicts
+          path: |
+            merge-conflicts.txt
+            merge-conflicts.patch
+          if-no-files-found: error
+          retention-days: 7
+      - name: Stop on conflicts
+        if: steps.merge.outputs.status != '0'
+        run: exit 1
+      - name: Formatting
+        if: steps.merge.outputs.status == '0'
+        run: cargo fmt --check
+      - name: Clippy correctness
+        if: steps.merge.outputs.status == '0'
+        run: cargo clippy --locked --all-targets --all-features -- -D clippy::correctness -D clippy::suspicious
+      - name: Tests
+        if: steps.merge.outputs.status == '0'
+        run: cargo test --locked --all-targets
+      - name: Release build
+        if: steps.merge.outputs.status == '0'
+        run: cargo build --locked --release
+      - name: Publish merge commit
+        if: steps.merge.outputs.status == '0'
+        run: |
+          git add -A
+          git commit -m "merge: integrate latest main before hardening closeout"
+          git push origin HEAD:fix/trust-and-reliability-v1
