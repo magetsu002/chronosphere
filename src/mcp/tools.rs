@@ -55,6 +55,16 @@ impl State {
                 }
             }
         };
+        let mut engagement = engagement;
+        let running_jobs = engagement
+            .as_mut()
+            .map(|engagement| {
+                crate::job_runtime::recover_running_map(
+                    &mut engagement.history,
+                    &Engagement::jobs_dir(&engagement.dir),
+                )
+            })
+            .unwrap_or_default();
         let lib_sources = library_sources(&root, engagement.as_ref());
         let paths: Vec<&Path> = lib_sources.iter().map(|p| p.as_path()).collect();
         let library = CommandLibrary::load(&paths).context("load library")?;
@@ -62,7 +72,7 @@ impl State {
             root,
             engagement,
             library,
-            running_jobs: HashMap::new(),
+            running_jobs,
         })
     }
 

@@ -166,6 +166,14 @@ impl Engagement {
             VariableStore::new()
         });
         let mut history = HistoryStore::open(&Self::history_path(&dir))?;
+        let jobs_dir = Self::jobs_dir(&dir);
+        let reconciliation = crate::job_runtime::reconcile_history(&mut history, &jobs_dir);
+        if !reconciliation.stale_jobs.is_empty() {
+            tracing::warn!(
+                count = reconciliation.stale_jobs.len(),
+                "reconciled stale running jobs"
+            );
+        }
         let secrets = crate::security::store_secrets(&profiles, &aps, &pivots, &variables);
         if history.redact_values(&secrets) {
             tracing::warn!("redacted sensitive values from legacy job history");
