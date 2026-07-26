@@ -51,3 +51,5 @@ jobs:
             exit "$status"
           fi
           tail -n 100 /tmp/job-recovery.log
+
+# Final trigger after all verified payload chunks were staged.
