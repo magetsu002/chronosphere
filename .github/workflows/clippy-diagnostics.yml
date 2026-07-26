@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  lockfile:
+  diagnose:
     if: github.head_ref == 'fix/trust-and-reliability-v1'
     runs-on: ubuntu-latest
     steps:
@@ -21,15 +21,20 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: "1.85"
-      - name: Refresh Cargo lockfile
+      - name: Capture compile diagnostics
         run: |
-          if [ "$(git log -1 --pretty=%s)" != "chore: refresh Cargo lockfile" ]; then
-            echo "Lockfile refresh already consumed."
+          if [ "$(git log -1 --pretty=%s)" != "chore: capture compile diagnostics" ]; then
+            echo "Diagnostic already consumed."
             exit 0
           fi
           git config user.name "Chronosphere Hardening Bot"
           git config user.email "actions@users.noreply.github.com"
-          cargo check
-          git add Cargo.lock
-          git commit -m "build: refresh Cargo lockfile"
+          set +e
+          cargo check > /tmp/check.log 2>&1
+          status=$?
+          set -e
+          tail -n 260 /tmp/check.log > .github/COMPILE_FAILURE.txt
+          git add Cargo.lock .github/COMPILE_FAILURE.txt
+          git commit -m "chore: record compile diagnostics"
           git push origin HEAD:fix/trust-and-reliability-v1
+          exit "$status"
