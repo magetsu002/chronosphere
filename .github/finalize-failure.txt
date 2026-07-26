@@ -1,0 +1,55 @@
++ git config user.name Chronosphere Hardening
++ git config user.email actions@users.noreply.github.com
++ git fetch --prune origin main fix/trust-and-reliability-v3
+From https://github.com/magetsu002/chronosphere
+ * branch            main       -> FETCH_HEAD
+ * branch            fix/trust-and-reliability-v3 -> FETCH_HEAD
++ git ls-remote --exit-code --heads origin refs/heads/fix/trust-and-reliability-final-v2
++ git log --format=%H%x09%s origin/main..origin/fix/trust-and-reliability-v3
+8a02355f12cfc88a3d417f93e031acc54948c386	ci: finish strict validation and release gates
+71d75c560e00855eb1286663a0a92cf540308427	fix: make engagement and cve persistence resilient
+8d6120a43f40d062a7d52f10c1690f7b0a61eb28	fix: validate templates before command execution
+943c0a9bd6fde28f374493d376169b817e8bc1ba	fix: harden ssh deployment and authentication
+c6e4aa0ac78140c066d94cfa4a4c1ca308221561	fix: add reliable job cancellation and timeout handling
+b579c58ebcf13d544e0f49e482d5ddbef2d3ad5a	fix: redact secrets from storage and output
+bea8d0b6f4d4df1f2939484d0d63d55f97c4d7a1	fix: enforce explicit and safe execution context
+7486b61bb1656ff009f100aafec83fa5bb1d4b71	chore: rerun replay after template test repair
+054e095012bfd3bebeebd6b867d7ac3b8528004f	fix: align template regression tests with fail-closed behavior
+943f3993e29a273d082072875b55f2ffae7be27e	chore: capture clean hardening replay failure
+db80c7da191f1e17f76c3384fa78bcb6f5e8afdb	chore: rerun replay with serial test diagnostics
+1188c05e998fb12dc0c803ebd3c6877f536805b4	chore: add serial test diagnostics for replay
+ba6a914adf21805d142af57fec33586a6b62e6a2	chore: capture clean hardening replay failure
+d01cd79b28c1a294f3ef7f1fac8fa3d098e61d3f	chore: rerun replay after compile-gap fixes
+3708a33a5e2d7f4b91797a2c9ffd2966c255faf4	fix: close remaining replay compile gaps
+fffcfc0596ef4062a991ee3098874dbf19a7ff0d	fix: target only the resolve context construction
+9d78bd36de83c61250ceab91fc55ba37092450e8	chore: capture clean hardening replay failure
+7e9db7f53678e715182b4df8b0092011a782334a	chore: rerun replay with direct context guard fix
+124a4c58f96cd5fb1803e6e8039f5ad43f20cb31	chore: make context call rewrite formatting independent
+1b1cea73321488e027f97a49bb06b6e76d1f785d	chore: capture clean hardening replay failure
+a3ee11eb14c2059aba16402cbbef0ffcb7de5154	chore: rerun replay with robust context transformer
+24eff9885f6cca34890626610ba8493306df223e	chore: replace brittle context replay transformer
+6ad177709ac6515ad348b04d3f125a7aefd5f62d	chore: capture clean hardening replay failure
+e24d6674ce8396c102d77b330fc86d626c7ec98b	chore: make deterministic replay self-diagnosing
+b1ebc39d22f9a1e3b5a2fa5ac696fb360a19486d	chore: rerun replay with latest-main compatibility fixes
+616647a40975b18e1b5ebbf9edfdfc5cf3947ca2	chore: repair replay compatibility with latest main
+0e37e66116722f59b3a5aaaad570149dde8d9e6b	chore: capture clean hardening replay failure
+5b946f2a13ed11c6195c70d26492fa8bc300c4d3	chore: rerun deterministic hardening replay
+2301026f734cb14c90c1ba64f12f91fc371bfd67	chore: make context replay formatting independent
+13006b203fc548fc92a052f2f024314cc8f59bb6	chore: capture clean hardening replay failure
+b5ef47bd4faf7e1f53e6e5742b5c51fab9fdd798	chore: rerun hardening with tracked diagnostics
+518c7fe8bcb4d9c397161f35d0302942bb33a2e4	chore: capture clean hardening replay failure
+d2f5c34072c3f314631ceaa9179079c990ecba22	chore: run deterministic hardening replay
+ebcf539d483f13c1a6905ff62a807be18a17489b	chore: stage deterministic hardening replay
++ git switch --detach origin/main
+error: Your local changes to the following files would be overwritten by checkout:
+	.github/finalize_hardening.py
+Please commit your changes or stash them before you switch branches.
+Aborting
+Traceback (most recent call last):
+  File "/home/runner/work/chronosphere/chronosphere/.github/finalize_hardening.py", line 417, in <module>
+    main()
+  File "/home/runner/work/chronosphere/chronosphere/.github/finalize_hardening.py", line 375, in main
+    run("git", "switch", "--detach", "origin/main")
+  File "/home/runner/work/chronosphere/chronosphere/.github/finalize_hardening.py", line 26, in run
+    raise RuntimeError(f"command failed ({result.returncode}): {' '.join(args)}")
+RuntimeError: command failed (1): git switch --detach origin/main
