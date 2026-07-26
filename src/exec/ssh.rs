@@ -350,7 +350,6 @@ impl SshDeploySession {
 }
 
 #[cfg(test)]
-
 mod tests {
     use super::*;
 
