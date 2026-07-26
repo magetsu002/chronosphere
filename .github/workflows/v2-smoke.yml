@@ -1,0 +1,25 @@
+name: V2 branch smoke
+
+on:
+  push:
+    branches: [fix/trust-and-reliability-v2]
+
+permissions:
+  contents: write
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/trust-and-reliability-v2
+          persist-credentials: true
+      - run: |
+          git config user.name "Chronosphere Hardening"
+          git config user.email "actions@users.noreply.github.com"
+          echo "ok" > .github/v2-smoke-ok.txt
+          rm .github/workflows/v2-smoke.yml
+          git add .github/v2-smoke-ok.txt .github/workflows/v2-smoke.yml
+          git commit -m "chore: verify clean branch automation"
+          git push origin HEAD:fix/trust-and-reliability-v2
