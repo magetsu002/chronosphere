@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  publish:
+  diagnose:
     if: github.head_ref == 'fix/trust-and-reliability-v1'
     runs-on: ubuntu-latest
     steps:
@@ -18,10 +18,10 @@ jobs:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
           persist-credentials: true
-      - name: Publish CI and release milestone
+      - name: Diagnose CI hardening milestone
         run: |
-          if [ "$(git log -1 --pretty=%s)" != "chore: publish ci and release milestone" ]; then
-            echo "Publisher already consumed."
+          if [ "$(git log -1 --pretty=%s)" != "chore: diagnose ci hardening milestone" ]; then
+            echo "Diagnostic already consumed."
             exit 0
           fi
           git config user.name "Chronosphere Hardening Bot"
@@ -52,10 +52,7 @@ jobs:
               "    phase_ci_docs()\n"
               "    validate_and_push()\n"
           )
-          replacement = (
-              "    phase_ci_docs()\n"
-              "    run(\"git\", \"push\", \"origin\", \"HEAD:fix/trust-and-reliability-v1\")\n"
-          )
+          replacement = "    phase_ci_docs()\n"
           if calls not in script:
               raise SystemExit('hardening phase sequence not found')
           script = script.replace(calls, replacement, 1)
@@ -65,4 +62,15 @@ jobs:
           )
           Path('.github/chronosphere_hardening.py').write_text(script)
           PY
-          python3 .github/chronosphere_hardening.py
+          set +e
+          python3 .github/chronosphere_hardening.py > /tmp/ci-hardening.log 2>&1
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            tail -n 120 /tmp/ci-hardening.log > .github/CI_HARDENING_FAILURE.txt
+            git add .github/CI_HARDENING_FAILURE.txt
+            git commit -m "chore: record ci hardening failure"
+            git push origin HEAD:fix/trust-and-reliability-v1
+            exit "$status"
+          fi
+          git push origin HEAD:fix/trust-and-reliability-v1
