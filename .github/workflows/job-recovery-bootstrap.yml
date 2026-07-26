@@ -3,6 +3,8 @@ name: Implement job recovery and log streaming
 on:
   push:
     branches: [chore/job-recovery-bootstrap]
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: write
@@ -13,7 +15,7 @@ concurrency:
 
 jobs:
   implement:
-    if: ${{ !startsWith(github.event.head_commit.message, 'chore: capture job recovery failure') }}
+    if: ${{ !startsWith(github.event.head_commit.message || '', 'chore: capture job recovery failure') }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -45,5 +47,3 @@ jobs:
             git push origin HEAD:chore/job-recovery-bootstrap
             exit "$status"
           fi
-
-# Triggered after the workflow was present on the branch.
