@@ -12,7 +12,7 @@ pub fn render(f: &mut Frame, area: Rect, app: &App, hits: &mut StatusBarHits) {
     hits.chips.clear();
     let mut x = area.x;
 
-    let mut advance =
+    let advance =
         |hits: &mut StatusBarHits, x: &mut u16, text: &str, action: Option<StatusBarAction>| {
             let w = text.len() as u16;
             if w > 0 {
