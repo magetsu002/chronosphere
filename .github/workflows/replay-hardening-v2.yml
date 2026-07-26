@@ -1,0 +1,445 @@
+name: Replay hardening milestones V2
+
+on:
+  push:
+    branches: [fix/trust-and-reliability-v2]
+
+permissions:
+  contents: write
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/trust-and-reliability-v2
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.88"
+          components: rustfmt, clippy
+      - name: Replay milestones and validate
+        shell: bash
+        run: |
+          set -euo pipefail
+          START=$(git rev-parse HEAD)
+          git config user.name "Chronosphere Hardening"
+          git config user.email "actions@users.noreply.github.com"
+          git fetch origin fix/trust-and-reliability-v1
+
+          apply_commit() {
+            local sha="$1"
+            set +e
+            git cherry-pick --no-commit -X ours "$sha"
+            local status=$?
+            set -e
+            if [ "$status" -ne 0 ]; then
+              while IFS= read -r path; do
+                [ -z "$path" ] && continue
+                git checkout --ours -- "$path" 2>/dev/null || git rm -f -- "$path"
+              done < <(git diff --name-only --diff-filter=U)
+              git add -A
+              git cherry-pick --quit
+            fi
+            test -z "$(git diff --name-only --diff-filter=U)"
+          }
+
+          commit_phase() {
+            cargo fmt
+            git add -A
+            git commit -m "$1"
+          }
+
+          # Milestone 1: strict execution context and engagement containment.
+          apply_commit a74ff8e7bd47abc5e2471d90f58fb767509ac37a
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/cli.rs")
+          source = path.read_text()
+          source = source.replace(
+              '    Engagement::load(root.join(&pick)).with_context(|| format!("load engagement {}", pick))',
+              '    Engagement::load_named(root, &pick).with_context(|| format!("load engagement {}", pick))',
+          )
+          old = '''    if let Some(name) = engagement {
+              let dir = root.join(name);'''
+          new = '''    if let Some(name) = engagement {
+              Engagement::validate_name(name)?;
+              let dir = root.join(name);'''
+          if old in source:
+              source = source.replace(old, new, 1)
+
+          start = source.index("fn build_context(")
+          end = source.index("\nfn resolve(", start)
+          replacement = '''fn build_context(
+              e: &Engagement,
+              target_override: &Option<String>,
+              ap_override: &Option<String>,
+              cred_override: &Option<String>,
+              extra_vars: &[String],
+          ) -> Result<RenderContext> {
+              let mut ctx = RenderContext::default();
+              let active_target = match target_override.as_deref() {
+                  Some(name) => Some(
+                      e.targets
+                          .targets
+                          .iter()
+                          .find(|target| target.name == name)
+                          .ok_or_else(|| anyhow!("no target named {}", name))?,
+                  ),
+                  None => e.targets.active(),
+              };
+              if let Some(target) = active_target {
+                  ctx.target = Some(target.clone());
+              }
+
+              let active_ap = match ap_override.as_deref() {
+                  Some(name) => Some(
+                      e.aps
+                          .aps
+                          .iter()
+                          .find(|ap| ap.name == name)
+                          .ok_or_else(|| anyhow!("no access point named {}", name))?,
+                  ),
+                  None => e.aps.active(),
+              };
+              if let Some(ap) = active_ap {
+                  ctx.ap = Some(ap.clone());
+              }
+
+              let active_profile = match cred_override.as_deref() {
+                  Some(name) => Some(
+                      e.profiles
+                          .profiles
+                          .iter()
+                          .find(|profile| profile.name == name)
+                          .ok_or_else(|| anyhow!("no credential profile named {}", name))?,
+                  ),
+                  None => e.profiles.active(),
+              };
+              if let Some(profile) = active_profile {
+                  ctx.profile = Some(profile.clone());
+              }
+
+              ctx.pivot_tunnel = e.pivots.active_tunnel().cloned();
+              ctx.pivot_remote = e.pivots.active_remote().cloned();
+              ctx.execution_mode = e.pivots.execution_mode;
+              ctx.engagement_dir = Some(e.dir.clone());
+              ctx.globals = e.variables.values.clone();
+              for value in extra_vars {
+                  if let Some((key, value)) = value.split_once('=') {
+                      ctx.globals
+                          .insert(key.trim().to_string(), value.to_string());
+                  }
+              }
+              Ok(ctx)
+          }
+          '''
+          source = source[:start] + replacement + source[end:]
+          old_call = '''    let ctx = build_context(
+              &e,
+              target_override,
+              ap_override,
+              cred_override,
+              extra_vars,
+          );'''
+          new_call = '''    let ctx = build_context(
+              &e,
+              target_override,
+              ap_override,
+              cred_override,
+              extra_vars,
+          )?;'''
+          if old_call in source:
+              source = source.replace(old_call, new_call, 1)
+          elif new_call not in source:
+              raise SystemExit("could not locate resolve context construction")
+          path.write_text(source)
+          PY
+          commit_phase "fix: enforce explicit and safe execution context"
+
+          # Milestone 2: secret redaction and private storage.
+          apply_commit 27cdf8d242b47086fc905b6bb391b456980f51af
+          apply_commit a830dbe03f8bd185cd74bf92ebaddf2c05f57236
+          python3 - <<'PY'
+          from pathlib import Path
+
+          main = Path("src/main.rs")
+          source = main.read_text()
+          if "mod security;" not in source:
+              marker = "mod render;\n"
+              if marker not in source:
+                  raise SystemExit("render module marker not found")
+              source = source.replace(marker, marker + "mod security;\n", 1)
+          main.write_text(source)
+
+          cli = Path("src/cli.rs")
+          source = cli.read_text()
+          raw_value = '        let val = value.filter(|v| !v.is_empty()).map(|s| s.as_str()).unwrap_or("-");'
+          redacted_value = '''        let val = if is_set && crate::security::is_sensitive_key(&name) {
+              "<redacted>"
+          } else {
+              value
+                  .filter(|value| !value.is_empty())
+                  .map(String::as_str)
+                  .unwrap_or("-")
+          };'''
+          if raw_value in source:
+              source = source.replace(raw_value, redacted_value, 1)
+          if "let redacted = crate::security::redact_for_engagement(resolved, &e);" not in source:
+              source = source.replace(
+                  '    eprintln!("[chrono] $ {}", resolved);',
+                  '    let redacted = crate::security::redact_for_engagement(resolved, &e);\n    eprintln!("[chrono] $ {}", redacted);',
+                  1,
+              )
+              source = source.replace("        resolved: resolved.to_string(),", "        resolved: redacted,", 1)
+          cli.write_text(source)
+          PY
+          commit_phase "fix: redact secrets from storage and output"
+
+          # Milestone 3: real cancellation, process-group timeout handling, and truthful states.
+          apply_commit f770bad6e78f3a6fdcd6a0318ce9a07235321af4
+          apply_commit be75b1f39c9b8a468a050877a21d8149a557c68f
+          apply_commit 91f516ebe2273b0fcccf056113c02bfdda9100a2
+          commit_phase "fix: add reliable job cancellation and timeout handling"
+
+          # Milestone 4: SSH/deploy correctness and password-safe process arguments.
+          apply_commit ec0b38503022eb39475fed3a23f4d71a26546e63
+          apply_commit 3edd2d6abaacd65d98a1c8dc4655356ab62b897f
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/exec/ssh.rs")
+          source = path.read_text()
+          old = '''    fn base_cmd(&self, prog: &str, port_flag: &str) -> Command {
+              let mut cmd = if let Some(pw) = &self.password {
+                  let mut c = Command::new("sshpass");
+                  c.arg("-p").arg(pw).arg(prog);
+                  c
+              } else {
+                  Command::new(prog)
+              };
+              cmd.arg(port_flag).arg(self.port.to_string());
+              cmd.arg("-o").arg("StrictHostKeyChecking=accept-new");
+              if let Some(id) = &self.identity {
+                  cmd.arg("-i").arg(id);
+              }
+              cmd
+          }
+          '''
+          new = '''    fn base_cmd(&self, prog: &str, port_flag: &str) -> Command {
+              let mut command = if let Some(password) = &self.password {
+                  let mut command = Command::new("sshpass");
+                  command.arg("-e").arg(prog);
+                  command.env("SSHPASS", password);
+                  command
+              } else {
+                  Command::new(prog)
+              };
+              command.arg(port_flag).arg(self.port.to_string());
+              command.arg("-o").arg("StrictHostKeyChecking=accept-new");
+              if let Some(identity) = &self.identity {
+                  command.arg("-i").arg(identity);
+              }
+              command
+          }
+          '''
+          if old in source:
+              source = source.replace(old, new, 1)
+          source = source.replace(
+              '''        if let Some(pw) = &self.password {
+                      cmd.push_str("sshpass -p ");
+                      cmd.push_str(&shell_escape(pw));
+                      cmd.push(' ');
+                  }
+                  cmd.push_str(prog);''',
+              '''        if let Some(password) = &self.password {
+                      cmd.push_str("SSHPASS=");
+                      cmd.push_str(&shell_escape(password));
+                      cmd.push_str(" sshpass -e ");
+                  }
+                  cmd.push_str(prog);''',
+          )
+          source = source.replace(
+              '''                format!(
+                          "sshpass -p {} ssh",
+                          shell_escape(self.password.as_ref().unwrap())
+                      )''',
+              '''                format!(
+                          "SSHPASS={} sshpass -e ssh",
+                          shell_escape(self.password.as_ref().unwrap())
+                      )''',
+          )
+          marker = "mod tests {\n    use super::*;\n"
+          if "deploy_session_keeps_password_out_of_arguments" not in source:
+              tests = '''mod tests {
+              use super::*;
+
+              #[test]
+              fn deploy_session_keeps_password_out_of_arguments() {
+                  let session = SshDeploySession {
+                      port: 2222,
+                      identity: None,
+                      password: Some("s3cret".into()),
+                  };
+                  let command = session.base_cmd("ssh", "-p");
+                  let args: Vec<String> = command
+                      .get_args()
+                      .map(|arg| arg.to_string_lossy().into_owned())
+                      .collect();
+                  assert!(!args.iter().any(|arg| arg == "s3cret"));
+                  assert_eq!(args.first().map(String::as_str), Some("-e"));
+                  let password = command
+                      .get_envs()
+                      .find(|(key, _)| key.to_string_lossy() == "SSHPASS")
+                      .and_then(|(_, value)| value)
+                      .map(|value| value.to_string_lossy().into_owned());
+                  assert_eq!(password.as_deref(), Some("s3cret"));
+              }
+
+              #[test]
+              fn deploy_session_uses_protocol_specific_port_flags() {
+                  let session = SshDeploySession {
+                      port: 2222,
+                      identity: None,
+                      password: None,
+                  };
+                  let ssh_args: Vec<String> = session
+                      .base_cmd("ssh", "-p")
+                      .get_args()
+                      .map(|arg| arg.to_string_lossy().into_owned())
+                      .collect();
+                  let scp_args: Vec<String> = session
+                      .base_cmd("scp", "-P")
+                      .get_args()
+                      .map(|arg| arg.to_string_lossy().into_owned())
+                      .collect();
+                  assert_eq!(ssh_args.first().map(String::as_str), Some("-p"));
+                  assert_eq!(scp_args.first().map(String::as_str), Some("-P"));
+              }
+          '''
+              if marker not in source:
+                  raise SystemExit("SSH test module marker not found")
+              source = source.replace(marker, tests, 1)
+          if "sshpass -p " in source:
+              raise SystemExit("plaintext sshpass argument construction remains")
+          path.write_text(source)
+
+          cargo = Path("Cargo.toml")
+          source = cargo.read_text()
+          if 'rpassword = "7"' not in source:
+              source = source.replace('flate2 = "1"\n', 'flate2 = "1"\nrpassword = "7"\n', 1)
+          cargo.write_text(source)
+          PY
+          cargo generate-lockfile
+          commit_phase "fix: harden ssh deployment and authentication"
+
+          # Milestone 5: fail-closed templates and unresolved placeholder blocking.
+          apply_commit 219ffb073762f7d66bae10724ab672281046d5a7
+          apply_commit 33ea82916ff43882e60a6b16178cc3b5295376ae
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/cli.rs")
+          source = path.read_text()
+          old = '''            if dry_run {
+                  println!("{}", resolved);
+                  return Ok(true);
+              }
+              run_with_history(&root, cli.opts.engagement.as_deref(), &id, &resolved).await?;'''
+          new = '''            if dry_run {
+                  println!("{}", resolved);
+                  return Ok(true);
+              }
+              let unresolved = crate::render::find_unresolved(&resolved);
+              if !unresolved.is_empty() {
+                  bail!(
+                      "command '{}' has unresolved placeholders: {}",
+                      id,
+                      unresolved.join(", ")
+                  );
+              }
+              run_with_history(&root, cli.opts.engagement.as_deref(), &id, &resolved).await?;'''
+          if "has unresolved placeholders" not in source:
+              if old not in source:
+                  raise SystemExit("latest-main run block not found")
+              source = source.replace(old, new, 1)
+          path.write_text(source)
+          PY
+          commit_phase "fix: validate templates before command execution"
+
+          # Milestone 6: resilient state writes and transactional CVE replacement.
+          apply_commit ac8fe981ec5fe92c12d53fdcd08d34370fb80057
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+
+          path = Path("src/cve/store.rs")
+          current = path.read_text()
+          hardened = subprocess.check_output(
+              ["git", "show", "origin/fix/trust-and-reliability-v1:src/cve/store.rs"],
+              text=True,
+          )
+          start_token = "    pub fn upsert(&mut self, record: &CveRecord) -> Result<bool> {"
+          end_token = "\n    fn replace_children"
+          old_start = hardened.index(start_token)
+          old_end = hardened.index(end_token, old_start)
+          new_start = current.index(start_token)
+          new_end = current.index(end_token, new_start)
+          current = current[:new_start] + hardened[old_start:old_end] + current[new_end:]
+          path.write_text(current)
+          PY
+          commit_phase "fix: make engagement and cve persistence resilient"
+
+          # Milestone 7: strict CI and gated releases, preserving version 0.2.1.
+          git show origin/fix/trust-and-reliability-v1:.github/workflows/rust.yml > .github/workflows/rust.yml
+          git show origin/fix/trust-and-reliability-v1:.github/workflows/release.yml > .github/workflows/release.yml
+          python3 - <<'PY'
+          from pathlib import Path
+
+          cargo = Path("Cargo.toml")
+          source = cargo.read_text()
+          if 'rust-version = "1.88"' not in source:
+              source = source.replace('edition = "2024"\n', 'edition = "2024"\nrust-version = "1.88"\n', 1)
+          if 'repository = "https://github.com/magetsu002/chronosphere"' not in source:
+              source = source.replace(
+                  'description = "Vim-flavored TUI for browsing, templating, and firing pentest commands from a per-engagement project directory."\n',
+                  'description = "Vim-flavored TUI for browsing, templating, and firing pentest commands from a per-engagement project directory."\nrepository = "https://github.com/magetsu002/chronosphere"\nreadme = "README.md"\n',
+                  1,
+              )
+          cargo.write_text(source)
+
+          readme = Path("README.md")
+          text = readme.read_text().replace("Rust 1.83+", "Rust 1.88+").replace("Rust 1.85+", "Rust 1.88+")
+          readme.write_text(text)
+          PY
+          rm -f .github/v1-commit-log.txt .github/workflows/replay-hardening-v2.yml
+          cargo generate-lockfile
+          commit_phase "ci: finish strict validation and release gates"
+
+          set +e
+          {
+            cargo fmt --check
+            cargo clippy --locked --all-targets --all-features -- -D clippy::correctness -D clippy::suspicious
+            cargo test --locked --all-targets
+            cargo build --locked --release
+          } > /tmp/v2-validation.log 2>&1
+          status=$?
+          set -e
+
+          if [ "$status" -ne 0 ]; then
+            cp /tmp/v2-validation.log /tmp/v2-validation.saved.log
+            git reset --hard "$START"
+            rm -f .github/v1-commit-log.txt .github/workflows/replay-hardening-v2.yml
+            cp /tmp/v2-validation.saved.log .github/v2-replay-failure.log
+            git add -A
+            git commit -m "chore: capture clean hardening replay failure"
+            git push origin HEAD:fix/trust-and-reliability-v2
+            exit 0
+          fi
+
+          git status --short
+          git push origin HEAD:fix/trust-and-reliability-v2
