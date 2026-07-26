@@ -1186,6 +1186,14 @@ alias chronosphere='{bin}'
                 println!("{}", resolved);
                 return Ok(true);
             }
+            let unresolved = crate::render::find_unresolved(&resolved);
+            if !unresolved.is_empty() {
+                bail!(
+                    "command '{}' has unresolved placeholders: {}",
+                    id,
+                    unresolved.join(", ")
+                );
+            }
             run_with_history(&root, cli.opts.engagement.as_deref(), &id, &resolved).await?;
             Ok(true)
         }
