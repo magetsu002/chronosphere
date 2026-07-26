@@ -913,24 +913,6 @@ async fn terminate_child(child: &mut tokio::process::Child, identity: &RuntimeId
     }
 }
 
-#[cfg(unix)]
-async fn send_process_group_signal(pid: u32, signal: &str) -> Result<()> {
-    let status = Command::new("kill")
-        .arg(format!("-{}", signal))
-        .arg(format!("-{}", pid))
-        .status()
-        .await
-        .with_context(|| format!("send {} to process group {}", signal, pid))?;
-    if !status.success() {
-        return Err(anyhow!(
-            "failed to send {} to process group {}",
-            signal,
-            pid
-        ));
-    }
-    Ok(())
-}
-
 #[derive(Deserialize)]
 struct TailArgs {
     job_id: String,
@@ -1040,9 +1022,37 @@ async fn tool_grep_job(args: Value, state: Arc<Mutex<State>>) -> Result<Value> {
     Ok(json!({"matches": matches, "count": matches.len()}))
 }
 
+fn refresh_recovered_jobs(state: &mut State) {
+    let stale = state
+        .running_jobs
+        .iter()
+        .filter(|(_, process)| {
+            process.recovered
+                && crate::job_runtime::identity_state(&process.identity)
+                    != crate::job_runtime::IdentityState::Alive
+        })
+        .map(|(job_id, _)| job_id.clone())
+        .collect::<Vec<_>>();
+    if stale.is_empty() {
+        return;
+    }
+    let jobs_dir = state
+        .engagement
+        .as_ref()
+        .map(|engagement| Engagement::jobs_dir(&engagement.dir));
+    for job_id in stale {
+        state.running_jobs.remove(&job_id);
+        if let Some(jobs_dir) = &jobs_dir {
+            crate::job_runtime::remove(jobs_dir, &job_id);
+        }
+        force_update_job(state, &job_id, JobStatus::Unknown, None);
+    }
+}
+
 async fn tool_list_jobs(args: Value, state: Arc<Mutex<State>>) -> Result<Value> {
     let limit = args.get("limit").and_then(|v| v.as_u64()).unwrap_or(20) as usize;
-    let s = state.lock().await;
+    let mut s = state.lock().await;
+    refresh_recovered_jobs(&mut s);
     let eng = s
         .engagement
         .as_ref()
@@ -1077,39 +1087,27 @@ async fn tool_kill_job(args: Value, state: Arc<Mutex<State>>) -> Result<Value> {
         .and_then(Value::as_str)
         .ok_or_else(|| anyhow!("missing job_id"))?
         .to_string();
-    let pid = {
-        let state = state.lock().await;
+    let process = {
+        let mut state = state.lock().await;
+        refresh_recovered_jobs(&mut state);
         state
             .running_jobs
             .get(&job_id)
-            .map(|process| process.identity.pid)
-            .ok_or_else(|| anyhow!("job '{}' is not running in this MCP session", job_id))?
+            .cloned()
+            .ok_or_else(|| anyhow!("job '{}' is not running", job_id))?
     };
 
-    #[cfg(unix)]
-    {
-        send_process_group_signal(pid, "TERM").await?;
-        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-        let alive = Command::new("kill")
-            .arg("-0")
-            .arg(format!("-{}", pid))
-            .status()
-            .await
-            .map(|status| status.success())
-            .unwrap_or(false);
-        if alive {
-            send_process_group_signal(pid, "KILL").await?;
-        }
-    }
-    #[cfg(not(unix))]
-    {
-        return Err(anyhow!(
-            "job cancellation is not supported on this platform yet"
-        ));
+    crate::job_runtime::signal_process_group(&process.identity, "TERM", process.recovered)?;
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    if crate::job_runtime::process_group_exists(&process.identity) {
+        crate::job_runtime::signal_process_group(&process.identity, "KILL", false)?;
     }
 
     let mut state = state.lock().await;
     state.running_jobs.remove(&job_id);
+    if let Some(engagement) = state.engagement.as_ref() {
+        crate::job_runtime::remove(&Engagement::jobs_dir(&engagement.dir), &job_id);
+    }
     force_update_job(&mut state, &job_id, JobStatus::Cancelled, None);
     Ok(json!({"job_id": job_id, "status": "cancelled"}))
 }
@@ -1284,8 +1282,10 @@ async fn tool_engagement_switch(args: Value, state: Arc<Mutex<State>>) -> Result
         .ok_or_else(|| anyhow!("missing name"))?
         .to_string();
     let mut s = state.lock().await;
-    let eng = Engagement::load_named(&s.root, &name)
+    let mut eng = Engagement::load_named(&s.root, &name)
         .with_context(|| format!("load engagement '{}'", name))?;
+    s.running_jobs =
+        crate::job_runtime::recover_running_map(&mut eng.history, &Engagement::jobs_dir(&eng.dir));
     s.engagement = Some(eng);
     s.reload_library();
     Ok(json!({"ok": true, "engagement": name}))
@@ -1310,6 +1310,8 @@ async fn tool_engagement_new(args: Value, state: Arc<Mutex<State>>) -> Result<Va
             toml::to_string_pretty(&eng.meta)?,
         )?;
     }
+    s.running_jobs =
+        crate::job_runtime::recover_running_map(&mut eng.history, &Engagement::jobs_dir(&eng.dir));
     s.engagement = Some(eng);
     s.reload_library();
     Ok(json!({"ok": true, "engagement": name}))
