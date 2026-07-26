@@ -28,11 +28,13 @@ jobs:
       - name: Build validated seven-commit branch
         shell: bash
         run: |
-          cp .github/finalize_hardening.py /tmp/finalize_hardening.py
-          sed -i 's#fix/trust-and-reliability-final#fix/trust-and-reliability-final-v2#' /tmp/finalize_hardening.py
-          python3 .github/fix_finalize_quotes.py
           set +e
-          python3 /tmp/finalize_hardening.py > /tmp/finalize-hardening.log 2>&1
+          {
+            cp .github/finalize_hardening.py /tmp/finalize_hardening.py
+            sed -i 's#fix/trust-and-reliability-final#fix/trust-and-reliability-final-v2#' /tmp/finalize_hardening.py
+            python3 .github/fix_finalize_quotes.py
+            python3 /tmp/finalize_hardening.py
+          } > /tmp/finalize-hardening.log 2>&1
           status=$?
           set -e
           cat /tmp/finalize-hardening.log
