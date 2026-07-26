@@ -14,6 +14,7 @@ use anyhow::{Context, Result, anyhow};
 use chrono::Utc;
 use serde::Deserialize;
 use serde_json::{Value, json};
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::fs;
@@ -26,6 +27,7 @@ pub struct State {
     pub root: PathBuf,
     pub engagement: Option<Engagement>,
     pub library: CommandLibrary,
+    pub running_pids: HashMap<String, u32>,
 }
 
 impl State {
@@ -61,6 +63,7 @@ let engagement = match engagement_name {
             root,
             engagement,
             library,
+            running_pids: HashMap::new(),
         })
     }
 
@@ -650,77 +653,100 @@ struct RunArgs {
 }
 
 async fn tool_run_command(args: Value, state: Arc<Mutex<State>>) -> Result<Value> {
-    let args: RunArgs = serde_json::from_value(args).map_err(|e| anyhow!("{}", e))?;
-    let dry = args.dry_run.unwrap_or(false);
+    let args: RunArgs = serde_json::from_value(args).map_err(|err| anyhow!("{}", err))?;
+    let dry_run = args.dry_run.unwrap_or(false);
     let timeout = std::time::Duration::from_secs(args.timeout_seconds.unwrap_or(600));
 
-    let (resolved, job_id, log_path, eng_dir, target_name, ap_name, profile_name, command_id, command_title) = {
-        let s = state.lock().await;
-        let eng = s.engagement.as_ref().ok_or_else(|| anyhow!("no engagement loaded"))?;
-        let (_, cmd) = find_command(&s, &args.id)?;
+    let (
+        resolved,
+        redacted,
+        job_id,
+        log_path,
+        engagement_dir,
+        target_name,
+        ap_name,
+        profile_name,
+        command_id,
+        command_title,
+    ) = {
+        let state = state.lock().await;
+        let engagement = state
+            .engagement
+            .as_ref()
+            .ok_or_else(|| anyhow!("no engagement loaded"))?;
+        let (_, command) = find_command(&state, &args.id)?;
         let extra = args.vars.clone().unwrap_or_default();
-        let ctx = s.render_ctx(
+        let context = state.render_ctx(
             args.target.as_deref(),
             args.ap.as_deref(),
             args.creds.as_deref(),
-        &extra,
-    )?;
-        let tmpl =
-            cmd.applicable_template(&|w| crate::render::condition::evaluate(w, &ctx));
-        let rendered = render::render(tmpl, &ctx).map_err(|e| anyhow!("{}", e))?;
-    let redacted = crate::security::redact_command(&rendered.resolved, &ctx);
+            &extra,
+        )?;
+        let template = command.applicable_template(&|when| {
+            crate::render::condition::evaluate(when, &context)
+        });
+        let rendered = render::render(template, &context)
+            .map_err(|err| anyhow!("{}", err))?;
+        if !rendered.unresolved.is_empty() {
+            return Err(anyhow!(
+                "command '{}' has unresolved placeholders: {}",
+                command.id,
+                rendered.unresolved.join(", ")
+            ));
+        }
+        let redacted = crate::security::redact_command(&rendered.resolved, &context);
         let job_id = uuid::Uuid::new_v4().to_string();
-        let log_path = Engagement::jobs_dir(&eng.dir).join(format!("{}.log", job_id));
-        let eng_dir = eng.dir.clone();
-        let target_name = eng.targets.active().map(|t| t.name.clone());
-        let ap_name = eng.aps.active().map(|a| a.name.clone());
-        let profile_name = eng.profiles.active().map(|p| p.name.clone());
-        let command_id = cmd.id.clone();
-        let command_title = cmd.title.clone();
+        let log_path =
+            Engagement::jobs_dir(&engagement.dir).join(format!("{}.log", job_id));
         (
             rendered.resolved,
+            redacted,
             job_id,
             log_path,
-            eng_dir,
-            target_name,
-            ap_name,
-            profile_name,
-            command_id,
-            command_title,
+            engagement.dir.clone(),
+            context.target.as_ref().map(|target| target.name.clone()),
+            context.ap.as_ref().map(|ap| ap.name.clone()),
+            context.profile.as_ref().map(|profile| profile.name.clone()),
+            command.id.clone(),
+            command.title.clone(),
         )
     };
 
-    if dry {
-        return Ok(json!({"resolved": resolved, "dry_run": true}));
+    if dry_run {
+        return Ok(json!({"resolved": redacted, "dry_run": true}));
     }
 
-    std::fs::create_dir_all(Engagement::jobs_dir(&eng_dir)).ok();
-
-    // Append a JobRecord with status=Running so list_jobs / tail_job work right away.
+    std::fs::create_dir_all(Engagement::jobs_dir(&engagement_dir))?;
     {
-        let mut s = state.lock().await;
-        let eng = s.engagement.as_mut().ok_or_else(|| anyhow!("no engagement"))?;
-        let pivot_name = eng
+        let mut state = state.lock().await;
+        let engagement = state
+            .engagement
+            .as_mut()
+            .ok_or_else(|| anyhow!("no engagement"))?;
+        let pivot_name = engagement
             .pivots
             .active_remote()
-            .or_else(|| eng.pivots.active_tunnel())
-            .map(|p| p.name.clone());
-        let execution_label = if eng.pivots.execution_mode == crate::engagement::ExecutionMode::Remote {
+            .or_else(|| engagement.pivots.active_tunnel())
+            .map(|pivot| pivot.name.clone());
+        let execution_label = if engagement.pivots.execution_mode
+            == crate::engagement::ExecutionMode::Remote
+        {
             format!(
                 "remote@{}",
-                eng.pivots
+                engagement
+                    .pivots
                     .active_remote()
-                    .map(|p| p.name.as_str())
+                    .map(|pivot| pivot.name.as_str())
                     .unwrap_or("?")
             )
         } else {
             "local".into()
         };
-        let rec = JobRecord {
+        let record = JobRecord {
             id: job_id.clone(),
             command_id: Some(command_id.clone()),
             command_title: command_title.clone(),
-            resolved: resolved.clone(),
+            resolved: redacted.clone(),
             started_at: Utc::now(),
             finished_at: None,
             status: JobStatus::Running,
@@ -733,69 +759,150 @@ async fn tool_run_command(args: Value, state: Arc<Mutex<State>>) -> Result<Value
             pivot: pivot_name,
             execution: Some(execution_label),
         };
-        eng.history.append(&rec)?;
+        engagement.history.append(&record)?;
     }
 
-    // Spawn in the background. We deliberately don't await completion here so the
-    // agent gets the job_id immediately and can poll via tail_job.
+    let log_file = crate::security::create_private_file(&log_path)?;
+    let log_clone = log_file.try_clone().ok();
+    let mut command = Command::new("bash");
+    command.arg("-lc").arg(&resolved);
+    command.stdout(log_file);
+    if let Some(stderr) = log_clone {
+        command.stderr(stderr);
+    }
+    command.kill_on_drop(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        command.as_std_mut().process_group(0);
+    }
+    let mut child = match command.spawn() {
+        Ok(child) => child,
+        Err(err) => {
+            let mut state = state.lock().await;
+            update_job(&mut state, &job_id, JobStatus::Failed, None);
+            return Err(err).context("spawn command");
+        }
+    };
+    let pid = child
+        .id()
+        .ok_or_else(|| anyhow!("spawned command did not expose a process id"))?;
+    {
+        let mut state = state.lock().await;
+        state.running_pids.insert(job_id.clone(), pid);
+    }
+
     let state_for_task = state.clone();
-    let log_for_task = log_path.clone();
-    let resolved_for_task = resolved.clone();
     let job_id_for_task = job_id.clone();
     tokio::spawn(async move {
-        let log_file = match std::fs::File::create(&log_for_task) {
-            Ok(f) => f,
-            Err(err) => {
-                tracing::error!(?err, path = %log_for_task.display(), "open job log");
-                return;
-            }
-        };
-        let log_clone = log_file.try_clone().ok();
-        let mut cmd = Command::new("bash");
-        cmd.arg("-lc").arg(&resolved_for_task);
-        cmd.stdout(log_file);
-        if let Some(stderr) = log_clone {
-            cmd.stderr(stderr);
-        }
-        let result = tokio::time::timeout(timeout, cmd.status()).await;
-        let (status_text, code) = match result {
-            Ok(Ok(status)) => (
-                if status.success() {
+        let outcome = tokio::time::timeout(timeout, child.wait()).await;
+        let (status, exit_code) = match outcome {
+            Ok(Ok(exit)) => (
+                if exit.success() {
                     JobStatus::Completed
                 } else {
                     JobStatus::Failed
                 },
-                status.code(),
+                exit.code(),
             ),
             Ok(Err(err)) => {
-                tracing::error!(?err, "spawn failure");
+                tracing::error!(?err, "job wait failed");
                 (JobStatus::Failed, None)
             }
-            Err(_) => (JobStatus::Killed, None),
+            Err(_) => {
+                terminate_child(&mut child, pid).await;
+                (JobStatus::TimedOut, None)
+            }
         };
-
-        let mut s = state_for_task.lock().await;
-        update_job(&mut s, &job_id_for_task, status_text, code);
+        let mut state = state_for_task.lock().await;
+        state.running_pids.remove(&job_id_for_task);
+        update_job(&mut state, &job_id_for_task, status, exit_code);
     });
 
     Ok(json!({
         "job_id": job_id,
-        "resolved": resolved,
+        "resolved": redacted,
         "log_path": log_path.to_string_lossy(),
         "status": "running",
     }))
 }
 
-fn update_job(s: &mut State, job_id: &str, status: JobStatus, code: Option<i32>) {
-    if let Some(eng) = s.engagement.as_mut() {
-        if let Some(slot) = eng.history.recent.iter().find(|r| r.id == job_id).cloned() {
-            let mut updated = slot;
+fn update_job(state: &mut State, job_id: &str, status: JobStatus, code: Option<i32>) {
+    let is_running = state
+        .engagement
+        .as_ref()
+        .and_then(|engagement| {
+            engagement
+                .history
+                .recent
+                .iter()
+                .find(|record| record.id == job_id)
+        })
+        .is_some_and(|record| record.status == JobStatus::Running);
+    if is_running {
+        force_update_job(state, job_id, status, code);
+    }
+}
+
+fn force_update_job(
+    state: &mut State,
+    job_id: &str,
+    status: JobStatus,
+    code: Option<i32>,
+) {
+    if let Some(engagement) = state.engagement.as_mut() {
+        if let Some(record) = engagement
+            .history
+            .recent
+            .iter()
+            .find(|record| record.id == job_id)
+            .cloned()
+        {
+            let mut updated = record;
             updated.status = status;
             updated.exit_code = code;
             updated.finished_at = Some(Utc::now());
-            eng.history.update(&updated);
+            engagement.history.update(&updated);
         }
     }
+}
+
+async fn terminate_child(child: &mut tokio::process::Child, pid: u32) {
+    #[cfg(unix)]
+    {
+        let _ = send_process_group_signal(pid, "TERM").await;
+        if tokio::time::timeout(std::time::Duration::from_secs(2), child.wait())
+            .await
+            .is_err()
+        {
+            let _ = send_process_group_signal(pid, "KILL").await;
+            let _ = child.wait().await;
+        }
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = pid;
+        let _ = child.kill().await;
+        let _ = child.wait().await;
+    }
+}
+
+#[cfg(unix)]
+async fn send_process_group_signal(pid: u32, signal: &str) -> Result<()> {
+    let status = Command::new("kill")
+        .arg(format!("-{}", signal))
+        .arg(format!("-{}", pid))
+        .status()
+        .await
+        .with_context(|| format!("send {} to process group {}", signal, pid))?;
+    if !status.success() {
+        return Err(anyhow!(
+            "failed to send {} to process group {}",
+            signal,
+            pid
+        ));
+    }
+    Ok(())
 }
 
 #[derive(Deserialize)]
@@ -943,18 +1050,49 @@ async fn tool_list_jobs
     Ok(json!({"jobs": truncated, "count": truncated.len()}))
 }
 
-async fn tool_kill_job(args: Value, _state: Arc<Mutex<State>>) -> Result<Value> {
-    // Without tmux we'd need to track child pids; for v1 we just record the intent.
-    // The agent should treat this as best-effort.
+async fn tool_kill_job(args: Value, state: Arc<Mutex<State>>) -> Result<Value> {
     let job_id = args
         .get("job_id")
-        .and_then(|v| v.as_str())
+        .and_then(Value::as_str)
         .ok_or_else(|| anyhow!("missing job_id"))?
         .to_string();
-    Ok(json!({"job_id": job_id, "note": "kill is best-effort; for full kill support attach via tmux"}))
+    let pid = {
+        let state = state.lock().await;
+        state.running_pids.get(&job_id).copied().ok_or_else(|| {
+            anyhow!("job '{}' is not running in this MCP session", job_id)
+        })?
+    };
+
+    #[cfg(unix)]
+    {
+        send_process_group_signal(pid, "TERM").await?;
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+        let alive = Command::new("kill")
+            .arg("-0")
+            .arg(format!("-{}", pid))
+            .status()
+            .await
+            .map(|status| status.success())
+            .unwrap_or(false);
+        if alive {
+            send_process_group_signal(pid, "KILL").await?;
+        }
+    }
+    #[cfg(not(unix))]
+    {
+        return Err(anyhow!(
+            "job cancellation is not supported on this platform yet"
+        ));
+    }
+
+    let mut state = state.lock().await;
+    state.running_pids.remove(&job_id);
+    force_update_job(&mut state, &job_id, JobStatus::Cancelled, None);
+    Ok(json!({"job_id": job_id, "status": "cancelled"}))
 }
 
-async fn tool_targets_list(state: Arc<Mutex<State>>) -> Result<Value> {
+async fn tool_targets_list
+(state: Arc<Mutex<State>>) -> Result<Value> {
     let s = state.lock().await;
     let eng = s.engagement.as_ref().ok_or_else(|| anyhow!("no engagement"))?;
     let active = eng.targets.active().map(|t| t.name.clone());
