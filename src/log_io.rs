@@ -224,3 +224,61 @@ fn count_lines(path: &Path) -> Result<usize> {
     }
     Ok(count)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+
+    #[test]
+    fn tails_large_logs_with_bounded_memory_window() {
+        let dir = std::env::temp_dir().join(format!("chrono-log-tail-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("large.log");
+        let mut file = File::create(&path).unwrap();
+        for index in 0..100_000usize {
+            writeln!(file, "line-{index:06}-{}", "x".repeat(32)).unwrap();
+        }
+        let result = tail_lines(&path, 25, 64 * 1024).unwrap();
+        assert_eq!(result.lines.len(), 25);
+        assert!(result.lines.last().unwrap().starts_with("line-099999"));
+        assert!(result.truncated);
+        assert!(result.scanned_bytes <= 64 * 1024);
+        assert_eq!(result.total_lines, None);
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn streams_grep_and_caps_matches_and_bytes() {
+        let dir = std::env::temp_dir().join(format!("chrono-log-grep-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("large.log");
+        let mut file = File::create(&path).unwrap();
+        for index in 0..20_000usize {
+            let marker = if index % 100 == 0 { " needle" } else { "" };
+            writeln!(file, "row-{index:06}{marker}").unwrap();
+        }
+        let result = grep_lines(&path, "needle", true, 10, 4 * 1024 * 1024).unwrap();
+        assert_eq!(result.matches.len(), 10);
+        assert!(result.truncated);
+        assert!(result.scanned_bytes <= 4 * 1024 * 1024);
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn truncates_single_oversized_lines_without_unbounded_output() {
+        let dir = std::env::temp_dir().join(format!("chrono-log-line-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("oversized.log");
+        std::fs::write(
+            &path,
+            format!("needle-{}\n", "x".repeat(MAX_LINE_BYTES * 4)),
+        )
+        .unwrap();
+        let result = grep_lines(&path, "needle", false, 5, 8 * 1024 * 1024).unwrap();
+        assert_eq!(result.matches.len(), 1);
+        assert!(result.matches[0].line_truncated);
+        assert!(result.matches[0].text.len() <= MAX_LINE_BYTES);
+        let _ = std::fs::remove_dir_all(dir);
+    }
+}

@@ -259,3 +259,78 @@ pub fn process_group_exists(identity: &RuntimeIdentity) -> bool {
         false
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn verifies_owned_process_and_rejects_pid_reuse() {
+        use std::os::unix::process::CommandExt;
+
+        let job_id = uuid::Uuid::new_v4().to_string();
+        let token = uuid::Uuid::new_v4().to_string();
+        let mut command = Command::new("bash");
+        command
+            .arg("-lc")
+            .arg("sleep 30")
+            .env(JOB_ID_ENV, &job_id)
+            .env(JOB_TOKEN_ENV, &token);
+        command.process_group(0);
+        let mut child = command.spawn().expect("spawn test child");
+        let identity = RuntimeIdentity::new(job_id, child.id(), token);
+        assert_eq!(identity_state(&identity), IdentityState::Alive);
+
+        let mut wrong = identity.clone();
+        wrong.token = "wrong-token".into();
+        assert_eq!(identity_state(&wrong), IdentityState::Mismatch);
+
+        signal_process_group(&identity, "TERM", true).expect("terminate test child");
+        let _ = child.wait();
+        assert_ne!(identity_state(&identity), IdentityState::Alive);
+    }
+
+    #[test]
+    fn reconciles_stale_runtime_sidecars_without_signalling() {
+        let root = std::env::temp_dir().join(format!("chrono-runtime-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&root).unwrap();
+        let history_path = root.join("jobs.jsonl");
+        let jobs_dir = root.join("jobs");
+        std::fs::create_dir_all(&jobs_dir).unwrap();
+        let mut history = HistoryStore::open(&history_path).unwrap();
+        let job_id = uuid::Uuid::new_v4().to_string();
+        history
+            .append(&crate::engagement::JobRecord {
+                id: job_id.clone(),
+                command_id: Some("test".into()),
+                command_title: "test".into(),
+                resolved: "sleep 30".into(),
+                started_at: Utc::now(),
+                finished_at: None,
+                status: JobStatus::Running,
+                exit_code: None,
+                tmux_window: None,
+                log_path: None,
+                target: None,
+                profile: None,
+                ap: None,
+                pivot: None,
+                execution: Some("local".into()),
+            })
+            .unwrap();
+        let identity = RuntimeIdentity {
+            job_id: job_id.clone(),
+            pid: u32::MAX,
+            process_group_id: Some(u32::MAX),
+            token: "stale".into(),
+            started_at: Utc::now(),
+        };
+        persist(&jobs_dir, &identity).unwrap();
+        let report = reconcile_history(&mut history, &jobs_dir);
+        assert_eq!(report.stale_jobs, vec![job_id.clone()]);
+        assert_eq!(history.recent[0].status, JobStatus::Unknown);
+        assert!(!runtime_path(&jobs_dir, &job_id).exists());
+        let _ = std::fs::remove_dir_all(root);
+    }
+}
