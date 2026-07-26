@@ -453,7 +453,7 @@ async fn tool_engagement_info(state: Arc<Mutex<State>>) -> Result<Value> {
                 "bssid": a.bssid,
                 "channel": a.channel,
                 "wpa_psk": a.wpa_psk.as_ref().map(|_| "<set>"),
-                "wps_pin": a.wps_pin,
+                "wps_pin": a.wps_pin.as_ref().map(|_| "<set>"),
                 "capture": a.capture,
             })),
             "active_tunnel_pivot": e.pivots.active_tunnel().map(|p| json!({
@@ -602,6 +602,7 @@ async fn tool_show_command(args: Value, state: Arc<Mutex<State>>) -> Result<Valu
     let tmpl =
         cmd.applicable_template(&|w| crate::render::condition::evaluate(w, &ctx));
     let rendered = render::render(tmpl, &ctx).map_err(|e| anyhow!("{}", e))?;
+    let redacted = crate::security::redact_command(&rendered.resolved, &ctx);
     Ok(json!({
         "id": cmd.id,
         "category": cat_id,
@@ -611,7 +612,7 @@ async fn tool_show_command(args: Value, state: Arc<Mutex<State>>) -> Result<Valu
         "interactive": cmd.interactive,
         "when": cmd.when,
         "raw_template": cmd.template,
-        "resolved": rendered.resolved,
+        "resolved": redacted,
         "unresolved_placeholders": rendered.unresolved,
     }))
 }
@@ -630,8 +631,9 @@ async fn tool_render_command(args: Value, state: Arc<Mutex<State>>) -> Result<Va
     let tmpl =
         cmd.applicable_template(&|w| crate::render::condition::evaluate(w, &ctx));
     let rendered = render::render(tmpl, &ctx).map_err(|e| anyhow!("{}", e))?;
+    let redacted = crate::security::redact_command(&rendered.resolved, &ctx);
     Ok(json!({
-        "resolved": rendered.resolved,
+        "resolved": redacted,
         "unresolved_placeholders": rendered.unresolved,
     }))
 }
@@ -666,6 +668,7 @@ async fn tool_run_command(args: Value, state: Arc<Mutex<State>>) -> Result<Value
         let tmpl =
             cmd.applicable_template(&|w| crate::render::condition::evaluate(w, &ctx));
         let rendered = render::render(tmpl, &ctx).map_err(|e| anyhow!("{}", e))?;
+    let redacted = crate::security::redact_command(&rendered.resolved, &ctx);
         let job_id = uuid::Uuid::new_v4().to_string();
         let log_path = Engagement::jobs_dir(&eng.dir).join(format!("{}.log", job_id));
         let eng_dir = eng.dir.clone();
@@ -801,76 +804,105 @@ struct TailArgs {
     lines: Option<usize>,
 }
 
-async fn tool_tail_job(args: Value, state: Arc<Mutex<State>>) -> Result<Value> {
-    let args: TailArgs = serde_json::from_value(args).map_err(|e| anyhow!("{}", e))?;
-    let n = args.lines.unwrap_or(200).clamp(1, 5000);
-    let (log_path, status, exit_code) = {
-        let s = state.lock().await;
-        let eng = s.engagement.as_ref().ok_or_else(|| anyhow!("no engagement"))?;
-        let job = eng
-            .history
-            .recent
-            .iter()
-            .find(|j| j.id == args.job_id)
-            .ok_or_else(|| anyhow!("no such job: {}", args.job_id))?;
-        (
-            job.log_path.clone(),
-            job.status,
-            job.exit_code,
-        )
-    };
-    let body = match log_path {
-        Some(p) if p.exists() => fs::read_to_string(&p).await.unwrap_or_default(),
-        _ => String::new(),
-    };
-    let lines: Vec<&str> = body.lines().collect();
-    let start = lines.len().saturating_sub(n);
-    let tail: Vec<String> = lines[start..].iter().map(|s| s.to_string()).collect();
-    Ok(json!({
-        "job_id": args.job_id,
-        "status": format!("{:?}", status).to_lowercase(),
-        "exit_code": exit_code,
-        "shown_lines": tail.len(),
-        "total_lines": lines.len(),
-        "tail": tail.join("\n"),
-    }))
-}
+            async fn tool_tail_job(args: Value, state: Arc<Mutex<State>>) -> Result<Value> {
+                let args: TailArgs = serde_json::from_value(args).map_err(|err| anyhow!("{}", err))?;
+                let lines_requested = args.lines.unwrap_or(200).clamp(1, 5000);
+                let (log_path, status, exit_code, secrets) = {
+                    let state = state.lock().await;
+                    let engagement = state
+                        .engagement
+                        .as_ref()
+                        .ok_or_else(|| anyhow!("no engagement"))?;
+                    let job = engagement
+                        .history
+                        .recent
+                        .iter()
+                        .find(|job| job.id == args.job_id)
+                        .ok_or_else(|| anyhow!("no such job: {}", args.job_id))?;
+                    (
+                        job.log_path.clone(),
+                        job.status,
+                        job.exit_code,
+                        crate::security::store_secrets(
+                            &engagement.profiles,
+                            &engagement.aps,
+                            &engagement.pivots,
+                            &engagement.variables,
+                        ),
+                    )
+                };
+                let body = match log_path {
+                    Some(path) if path.exists() => fs::read_to_string(&path).await.unwrap_or_default(),
+                    _ => String::new(),
+                };
+                let body = crate::security::redact_values(&body, &secrets);
+                let lines: Vec<&str> = body.lines().collect();
+                let start = lines.len().saturating_sub(lines_requested);
+                let tail: Vec<String> = lines[start..]
+                    .iter()
+                    .map(|line| line.to_string())
+                    .collect();
+                Ok(json!({
+                    "job_id": args.job_id,
+                    "status": format!("{:?}", status).to_lowercase(),
+                    "exit_code": exit_code,
+                    "shown_lines": tail.len(),
+                    "total_lines": lines.len(),
+                    "tail": tail.join("
+"),
+                }))
+            }
 
-#[derive(Deserialize)]
-struct GrepArgs {
+            #[derive(Deserialize)]
+            struct GrepArgs
+ {
     job_id: String,
     pattern: String,
     ignore_case: Option<bool>,
 }
 
 async fn tool_grep_job(args: Value, state: Arc<Mutex<State>>) -> Result<Value> {
-    let args: GrepArgs = serde_json::from_value(args).map_err(|e| anyhow!("{}", e))?;
-    let ignore = args.ignore_case.unwrap_or(true);
-    let needle = if ignore {
+    let args: GrepArgs = serde_json::from_value(args).map_err(|err| anyhow!("{}", err))?;
+    let ignore_case = args.ignore_case.unwrap_or(true);
+    let needle = if ignore_case {
         args.pattern.to_lowercase()
     } else {
         args.pattern.clone()
     };
-    let log_path = {
-        let s = state.lock().await;
-        let eng = s.engagement.as_ref().ok_or_else(|| anyhow!("no engagement"))?;
-        eng.history
+    let (log_path, secrets) = {
+        let state = state.lock().await;
+        let engagement = state
+            .engagement
+            .as_ref()
+            .ok_or_else(|| anyhow!("no engagement"))?;
+        let log_path = engagement
+            .history
             .recent
             .iter()
-            .find(|j| j.id == args.job_id)
-            .and_then(|j| j.log_path.clone())
-            .ok_or_else(|| anyhow!("no such job: {}", args.job_id))?
+            .find(|job| job.id == args.job_id)
+            .and_then(|job| job.log_path.clone())
+            .ok_or_else(|| anyhow!("no such job: {}", args.job_id))?;
+        (
+            log_path,
+            crate::security::store_secrets(
+                &engagement.profiles,
+                &engagement.aps,
+                &engagement.pivots,
+                &engagement.variables,
+            ),
+        )
     };
     let body = fs::read_to_string(&log_path).await.unwrap_or_default();
+    let body = crate::security::redact_values(&body, &secrets);
     let mut matches = Vec::new();
-    for (i, line) in body.lines().enumerate() {
-        let hay = if ignore {
+    for (index, line) in body.lines().enumerate() {
+        let haystack = if ignore_case {
             line.to_lowercase()
         } else {
             line.to_string()
         };
-        if hay.contains(&needle) {
-            matches.push(json!({"line": i + 1, "text": line}));
+        if haystack.contains(&needle) {
+            matches.push(json!({"line": index + 1, "text": line}));
             if matches.len() >= 200 {
                 break;
             }
@@ -879,7 +911,8 @@ async fn tool_grep_job(args: Value, state: Arc<Mutex<State>>) -> Result<Value> {
     Ok(json!({"matches": matches, "count": matches.len()}))
 }
 
-async fn tool_list_jobs(args: Value, state: Arc<Mutex<State>>) -> Result<Value> {
+async fn tool_list_jobs
+(args: Value, state: Arc<Mutex<State>>) -> Result<Value> {
     let limit = args
         .get("limit")
         .and_then(|v| v.as_u64())

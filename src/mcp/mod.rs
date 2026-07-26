@@ -50,7 +50,7 @@ pub async fn serve(opts: ServerOpts) -> Result<()> {
         let req: Request = match serde_json::from_str(trimmed) {
             Ok(r) => r,
             Err(err) => {
-                tracing::warn!(?err, raw = %trimmed, "mcp: malformed request");
+                tracing::warn!(?err, bytes = trimmed.len(), "mcp: malformed request");
                 continue;
             }
         };

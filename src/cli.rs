@@ -1293,7 +1293,14 @@ fn print_variables(e: &Engagement, lib: &CommandLibrary, unset_only: bool) {
             continue;
         }
         let status = if is_set { "set" } else { "unset" };
-        let val = value.filter(|v| !v.is_empty()).map(|s| s.as_str()).unwrap_or("-");
+        let val = if is_set && crate::security::is_sensitive_key(&name) {
+            "<redacted>"
+        } else {
+            value
+                .filter(|value| !value.is_empty())
+                .map(String::as_str)
+                .unwrap_or("-")
+        };
         let tag = if library.contains(&name) { "" } else { " (custom)" };
         println!("{:<8}  {:<20}  {}{}", status, name, val, tag);
     }
@@ -1342,7 +1349,8 @@ async fn run_with_history(
     let job_id = format!("{}", uuid::Uuid::new_v4());
     let log_path = Engagement::jobs_dir(&e.dir).join(format!("{job_id}.log"));
     fs::create_dir_all(Engagement::jobs_dir(&e.dir)).ok();
-    eprintln!("[chrono] $ {}", resolved);
+    let redacted = crate::security::redact_for_engagement(resolved, &e);
+    eprintln!("[chrono] $ {}", redacted);
     let status = Command::new("bash")
         .arg("-lc")
         .arg(resolved)
@@ -1354,7 +1362,7 @@ async fn run_with_history(
         id: job_id,
         command_id: Some(id.to_string()),
         command_title: id.to_string(),
-        resolved: resolved.to_string(),
+        resolved: redacted,
         target,
         profile,
         ap,

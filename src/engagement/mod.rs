@@ -166,7 +166,11 @@ pub fn create(root: &Path, name: &str) -> Result<Self> {
             tracing::warn!(?err, "could not load variables.json; starting fresh");
             VariableStore::new()
         });
-        let history = HistoryStore::open(&Self::history_path(&dir))?;
+let mut history = HistoryStore::open(&Self::history_path(&dir))?;
+let secrets = crate::security::store_secrets(&profiles, &aps, &pivots, &variables);
+if history.redact_values(&secrets) {
+    tracing::warn!("redacted sensitive values from legacy job history");
+}
         fs::create_dir_all(Self::jobs_dir(&dir)).ok();
         fs::create_dir_all(Self::overrides_dir(&dir)).ok();
         Ok(Self {

@@ -66,11 +66,17 @@ impl HistoryStore {
                 }
             }
         }
-        let f = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(path)
-            .with_context(|| format!("open append {}", path.display()))?;
+let mut options = OpenOptions::new();
+options.create(true).append(true);
+#[cfg(unix)]
+{
+    use std::os::unix::fs::OpenOptionsExt;
+    options.mode(0o600);
+}
+let f = options
+    .open(path)
+    .with_context(|| format!("open append {}", path.display()))?;
+crate::security::secure_existing_file(path)?;
         Ok(Self {
             path: path.to_path_buf(),
             file: Mutex::new(f),
@@ -95,32 +101,57 @@ impl HistoryStore {
         self.rewrite_all();
     }
 
-    fn rewrite_all(&mut self) {
-        let tmp = self.path.with_extension("jsonl.tmp");
-        let mut tmp_f = match File::create(&tmp) {
-            Ok(f) => f,
-            Err(err) => {
-                tracing::warn!(?err, "rewrite history: create tmp failed");
-                return;
-            }
-        };
-        for r in &self.recent {
-            if let Ok(line) = serde_json::to_string(r) {
-                let _ = writeln!(tmp_f, "{}", line);
-            }
-        }
-        drop(tmp_f);
-        if let Err(err) = std::fs::rename(&tmp, &self.path) {
-            tracing::warn!(?err, "rewrite history: rename failed");
-        } else {
-            // re-open append handle since we replaced the file
-            if let Ok(f) = OpenOptions::new().append(true).open(&self.path) {
-                *self.file.lock().expect("history file mutex") = f;
-            }
-        }
-    }
+                pub fn redact_values(&mut self, secrets: &[String]) -> bool {
+                    let mut changed = false;
+                    for record in &mut self.recent {
+                        let redacted = crate::security::redact_values(&record.resolved, secrets);
+                        if redacted != record.resolved {
+                            record.resolved = redacted;
+                            changed = true;
+                        }
+                    }
+                    if changed {
+                        self.rewrite_all();
+                    }
+                    changed
+                }
 
-    pub fn last_n(&self, n: usize) -> &[JobRecord] {
+                fn rewrite_all(&mut self) {
+                    let mut contents = String::new();
+                    for record in &self.recent {
+                        match serde_json::to_string(record) {
+                            Ok(line) => {
+                                contents.push_str(&line);
+                                contents.push('
+');
+                            }
+                            Err(err) => {
+                                tracing::warn!(?err, "rewrite history: serialize failed");
+                                return;
+                            }
+                        }
+                    }
+                    if let Err(err) = crate::security::write_private_atomic(
+                        &self.path,
+                        contents.as_bytes(),
+                    ) {
+                        tracing::warn!(?err, "rewrite history: atomic replacement failed");
+                        return;
+                    }
+                    let mut options = OpenOptions::new();
+                    options.append(true);
+                    #[cfg(unix)]
+                    {
+                        use std::os::unix::fs::OpenOptionsExt;
+                        options.mode(0o600);
+                    }
+                    if let Ok(file) = options.open(&self.path) {
+                        *self.file.lock().expect("history file mutex") = file;
+                    }
+                }
+
+                pub fn last_n
+(&self, n: usize) -> &[JobRecord] {
         let start = self.recent.len().saturating_sub(n);
         &self.recent[start..]
     }

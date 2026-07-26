@@ -37,6 +37,7 @@ pub struct Executor {
     pub availability: TmuxAvailability,
     pub jobs_dir: PathBuf,
     pub engagement_dir: PathBuf,
+    secrets: Vec<String>,
 }
 
 impl Executor {
@@ -58,11 +59,17 @@ impl Executor {
         } else {
             TmuxAvailability::Unavailable
         };
-        Self {
-            availability,
-            jobs_dir,
-            engagement_dir: engagement.dir.clone(),
-        }
+Self {
+    availability,
+    jobs_dir,
+    engagement_dir: engagement.dir.clone(),
+    secrets: crate::security::store_secrets(
+        &engagement.profiles,
+        &engagement.aps,
+        &engagement.pivots,
+        &engagement.variables,
+    ),
+}
     }
 
     /// Spawn a command. Non-interactive → tmux new-window detached + tee to log. Interactive →
@@ -71,6 +78,7 @@ impl Executor {
         let id = Uuid::new_v4().to_string();
         let log_path = self.jobs_dir.join(format!("{}.log", id));
         let status_path = self.jobs_dir.join(format!("{}.status", id));
+        let _ = crate::security::create_private_file(&log_path)?;
 
         let log_str = log_path.to_string_lossy().to_string();
         let status_str = status_path.to_string_lossy().to_string();
@@ -129,7 +137,7 @@ impl Executor {
             id,
             command_id: req.command_id,
             command_title: req.command_title,
-            resolved: req.resolved,
+            resolved: crate::security::redact_values(&req.resolved, &self.secrets),
             started_at: Utc::now(),
             finished_at: None,
             status: JobStatus::Running,
