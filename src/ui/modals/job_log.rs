@@ -1,5 +1,5 @@
 use crate::app::{App, JobLogModal, Modal};
-use crate::engagement::{JobRecord, JobStatus};
+use crate::engagement::JobRecord;
 use crate::exec::tmux;
 use crate::ui::centered_rect;
 use crate::ui::theme::Theme;
@@ -298,6 +298,7 @@ fn truncate(s: &str, max: usize) -> String {
 mod tests {
     use super::*;
     use crate::app::JobLogModal;
+    use crate::engagement::JobStatus;
     use std::io::Write;
     use std::time::{SystemTime, UNIX_EPOCH};
 
