@@ -30,10 +30,45 @@ jobs:
         run: |
           set +e
           {
-            cp .github/finalize_hardening.py /tmp/finalize_hardening.py
-            sed -i 's#fix/trust-and-reliability-final#fix/trust-and-reliability-final-v2#' /tmp/finalize_hardening.py
-            python3 .github/fix_finalize_quotes.py
-            python3 /tmp/finalize_hardening.py
+            cp .github/apply_final_ssh_fix.py /tmp/apply_final_ssh_fix.py
+            git config user.name "Chronosphere Hardening"
+            git config user.email "actions@users.noreply.github.com"
+            git fetch --prune origin main fix/trust-and-reliability-final
+
+            if git ls-remote --exit-code --heads origin refs/heads/fix/trust-and-reliability-final-v2; then
+              echo "refusing to overwrite existing fix/trust-and-reliability-final-v2"
+              exit 1
+            fi
+
+            mapfile -t commits < <(git rev-list --reverse origin/main..origin/fix/trust-and-reliability-final)
+            if [ "${#commits[@]}" -ne 7 ]; then
+              echo "expected 7 clean milestone commits, found ${#commits[@]}"
+              exit 1
+            fi
+
+            git switch --detach origin/main
+            git switch -c fix/trust-and-reliability-final-v2
+
+            for index in "${!commits[@]}"; do
+              git cherry-pick "${commits[$index]}"
+              if [ "$index" -eq 3 ]; then
+                python3 /tmp/apply_final_ssh_fix.py
+                cargo fmt
+                git add src/exec/ssh.rs src/exec/remote.rs
+                git commit --amend --no-edit
+              fi
+            done
+
+            cargo fmt --check
+            cargo clippy --locked --all-targets --all-features -- -D clippy::correctness -D clippy::suspicious
+            cargo test --locked --all-targets
+            cargo build --locked --release
+            git diff --check
+
+            count=$(git rev-list --count origin/main..HEAD)
+            test "$count" -eq 7
+            test -z "$(git status --porcelain)"
+            git push origin HEAD:refs/heads/fix/trust-and-reliability-final-v2
           } > /tmp/finalize-hardening.log 2>&1
           status=$?
           set -e
@@ -44,7 +79,9 @@ jobs:
             git switch -f chore/trust-reliability-closeout
             cp /tmp/finalize-hardening.log .github/finalize-failure.txt
             git add .github/finalize-failure.txt
-            git commit -m "chore: capture hardening closeout failure"
-            git push origin HEAD:chore/trust-reliability-closeout
+            if ! git diff --cached --quiet; then
+              git commit -m "chore: capture hardening closeout failure"
+              git push origin HEAD:chore/trust-reliability-closeout
+            fi
             exit "$status"
           fi
