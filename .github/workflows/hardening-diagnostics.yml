@@ -28,10 +28,12 @@ jobs:
           components: rustfmt, clippy
       - name: Resume milestones and capture failures
         run: |
-          if [ "$(git log -1 --pretty=%s)" != "chore: continue hardening validation" ]; then
+          if [ "$(git log -1 --pretty=%s)" != "chore: configure hardening commits" ]; then
             echo "Diagnostic bootstrap already consumed."
             exit 0
           fi
+          git config user.name "Chronosphere Hardening Bot"
+          git config user.email "actions@users.noreply.github.com"
           python3 - <<'PY'
           from pathlib import Path
 
