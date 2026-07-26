@@ -1,0 +1,25 @@
+name: Replay hardening milestones V3
+
+on:
+  push:
+    branches: [fix/trust-and-reliability-v3]
+
+permissions:
+  contents: write
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/trust-and-reliability-v3
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.88"
+          components: rustfmt, clippy
+      - name: Replay, validate, and publish milestones
+        run: python3 .github/replay_hardening_v3.py
