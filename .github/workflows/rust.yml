@@ -9,12 +9,17 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: rust-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -43,6 +48,7 @@ jobs:
           name: rust-validation-logs
           path: clippy.log
           if-no-files-found: error
+          retention-days: 7
       - name: Enforce Clippy result
         if: steps.clippy.outputs.status != '0'
         run: |
