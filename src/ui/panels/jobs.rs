@@ -42,11 +42,13 @@ pub fn render(f: &mut Frame, area: Rect, app: &App, hit: &mut ListRegion) {
                 JobStatus::Running => ("●", Theme::accent()),
                 JobStatus::Completed => ("✓", Theme::success()),
                 JobStatus::Failed => ("✗", Theme::error()),
+                JobStatus::Cancelled => ("■", Theme::warn()),
+                JobStatus::TimedOut => ("⌛", Theme::warn()),
                 JobStatus::Killed => ("✗", Theme::warn()),
                 JobStatus::Unknown => ("?", Theme::muted()),
             };
             let elapsed = match job.finished_at {
-                Some(f) => f - job.started_at,
+                Some(finished) => finished - job.started_at,
                 None => Utc::now() - job.started_at,
             };
             let elapsed_str = format_duration(elapsed.num_seconds());

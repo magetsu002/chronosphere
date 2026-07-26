@@ -12,6 +12,8 @@ pub enum JobStatus {
     Running,
     Completed,
     Failed,
+    Cancelled,
+    TimedOut,
     Killed,
     Unknown,
 }
