@@ -175,10 +175,10 @@ impl SshConn {
 
     fn wrap_prog(&self, prog: &str, args: &[String]) -> String {
         let mut cmd = String::new();
-        if let Some(pw) = &self.password {
-            cmd.push_str("sshpass -p ");
-            cmd.push_str(&shell_escape(pw));
-            cmd.push(' ');
+        if let Some(password) = &self.password {
+            cmd.push_str("SSHPASS=");
+            cmd.push_str(&shell_escape(password));
+            cmd.push_str(" sshpass -e ");
         }
         cmd.push_str(prog);
         for a in args {
@@ -227,7 +227,7 @@ impl SshConn {
         ));
         let mut ssh_cmd = if self.password.is_some() {
             format!(
-                "sshpass -p {} ssh",
+                "SSHPASS={} sshpass -e ssh",
                 shell_escape(self.password.as_ref().unwrap())
             )
         } else {
@@ -329,25 +329,48 @@ impl SshDeploySession {
     }
 
     fn base_cmd(&self, prog: &str, port_flag: &str) -> Command {
-        let mut cmd = if let Some(pw) = &self.password {
-            let mut c = Command::new("sshpass");
-            c.arg("-p").arg(pw).arg(prog);
-            c
+        let mut command = if let Some(password) = &self.password {
+            let mut command = Command::new("sshpass");
+            command.arg("-e").arg(prog);
+            command.env("SSHPASS", password);
+            command
         } else {
             Command::new(prog)
         };
-        cmd.arg(port_flag).arg(self.port.to_string());
-        cmd.arg("-o").arg("StrictHostKeyChecking=accept-new");
-        if let Some(id) = &self.identity {
-            cmd.arg("-i").arg(id);
+        command.arg(port_flag).arg(self.port.to_string());
+        command.arg("-o").arg("StrictHostKeyChecking=accept-new");
+        if let Some(identity) = &self.identity {
+            command.arg("-i").arg(identity);
         }
-        cmd
+        command
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn deploy_session_keeps_password_out_of_arguments() {
+        let session = SshDeploySession {
+            port: 2222,
+            identity: None,
+            password: Some("s3cret".into()),
+        };
+        let command = session.base_cmd("ssh", "-p");
+        let args: Vec<String> = command
+            .get_args()
+            .map(|arg| arg.to_string_lossy().into_owned())
+            .collect();
+        assert!(!args.iter().any(|arg| arg == "s3cret"));
+        assert_eq!(args.first().map(String::as_str), Some("-e"));
+        let password = command
+            .get_envs()
+            .find(|(key, _)| key.to_string_lossy() == "SSHPASS")
+            .and_then(|(_, value)| value)
+            .map(|value| value.to_string_lossy().into_owned());
+        assert_eq!(password.as_deref(), Some("s3cret"));
+    }
 
     #[test]
     fn remote_wrapper_contains_scp_and_ssh() {
