@@ -43,13 +43,14 @@ jobs:
             git cherry-pick --abort 2>/dev/null || true
             git reset --hard
             git switch -C chore/job-recovery-failure origin/chore/job-recovery-failure
-            mkdir -p .github
-            cp /tmp/job-recovery.log .github/job-recovery-failure.txt
-            git add .github/job-recovery-failure.txt
-            git commit -m "chore: capture job recovery failure"
+            mkdir -p .github/job-recovery-failures
+            report=".github/job-recovery-failures/${GITHUB_RUN_ID}.txt"
+            cp /tmp/job-recovery.log "$report"
+            git add "$report"
+            git commit -m "chore: capture job recovery failure ${GITHUB_RUN_ID}"
             git push origin HEAD:chore/job-recovery-failure
             exit "$status"
           fi
           tail -n 100 /tmp/job-recovery.log
 
-# Trigger after the stale runtime-map reference was corrected.
+# Use a run-specific failure report so every blocker remains observable.
