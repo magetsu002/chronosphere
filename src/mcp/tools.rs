@@ -4,6 +4,7 @@
 
 use super::protocol::McpError;
 use crate::engagement::{CredKind, CredentialProfile, Engagement, JobRecord, JobStatus, Target};
+use crate::job_runtime::{RunningProcess, RuntimeIdentity};
 use crate::library::CommandLibrary;
 use crate::render::{self, RenderContext};
 use crate::{builtin, config};
@@ -25,7 +26,7 @@ pub struct State {
     pub root: PathBuf,
     pub engagement: Option<Engagement>,
     pub library: CommandLibrary,
-    pub running_pids: HashMap<String, u32>,
+    pub running_jobs: HashMap<String, RunningProcess>,
 }
 
 impl State {
@@ -61,7 +62,7 @@ impl State {
             root,
             engagement,
             library,
-            running_pids: HashMap::new(),
+            running_jobs: HashMap::new(),
         })
     }
 
@@ -668,6 +669,7 @@ async fn tool_run_command(args: Value, state: Arc<Mutex<State>>) -> Result<Value
         profile_name,
         command_id,
         command_title,
+        runtime_token,
     ) = {
         let state = state.lock().await;
         let engagement = state
@@ -694,6 +696,7 @@ async fn tool_run_command(args: Value, state: Arc<Mutex<State>>) -> Result<Value
         }
         let redacted = crate::security::redact_command(&rendered.resolved, &context);
         let job_id = uuid::Uuid::new_v4().to_string();
+        let runtime_token = uuid::Uuid::new_v4().to_string();
         let log_path = Engagement::jobs_dir(&engagement.dir).join(format!("{}.log", job_id));
         (
             rendered.resolved,
@@ -706,6 +709,7 @@ async fn tool_run_command(args: Value, state: Arc<Mutex<State>>) -> Result<Value
             context.profile.as_ref().map(|profile| profile.name.clone()),
             command.id.clone(),
             command.title.clone(),
+            runtime_token,
         )
     };
 
@@ -761,7 +765,11 @@ async fn tool_run_command(args: Value, state: Arc<Mutex<State>>) -> Result<Value
     let log_file = crate::security::create_private_file(&log_path)?;
     let log_clone = log_file.try_clone().ok();
     let mut command = Command::new("bash");
-    command.arg("-lc").arg(&resolved);
+    command
+        .arg("-lc")
+        .arg(&resolved)
+        .env(crate::job_runtime::JOB_ID_ENV, &job_id)
+        .env(crate::job_runtime::JOB_TOKEN_ENV, &runtime_token);
     command.stdout(log_file);
     if let Some(stderr) = log_clone {
         command.stderr(stderr);
@@ -783,13 +791,29 @@ async fn tool_run_command(args: Value, state: Arc<Mutex<State>>) -> Result<Value
     let pid = child
         .id()
         .ok_or_else(|| anyhow!("spawned command did not expose a process id"))?;
+    let identity = RuntimeIdentity::new(job_id.clone(), pid, runtime_token);
+    if let Err(err) = crate::job_runtime::persist(&Engagement::jobs_dir(&engagement_dir), &identity)
+    {
+        terminate_child(&mut child, &identity).await;
+        let mut state = state.lock().await;
+        update_job(&mut state, &job_id, JobStatus::Failed, None);
+        return Err(err).context("persist runtime identity");
+    }
     {
         let mut state = state.lock().await;
-        state.running_pids.insert(job_id.clone(), pid);
+        state.running_jobs.insert(
+            job_id.clone(),
+            RunningProcess {
+                identity: identity.clone(),
+                recovered: false,
+            },
+        );
     }
 
     let state_for_task = state.clone();
     let job_id_for_task = job_id.clone();
+    let identity_for_task = identity.clone();
+    let jobs_dir_for_task = Engagement::jobs_dir(&engagement_dir);
     tokio::spawn(async move {
         let outcome = tokio::time::timeout(timeout, child.wait()).await;
         let (status, exit_code) = match outcome {
@@ -806,12 +830,13 @@ async fn tool_run_command(args: Value, state: Arc<Mutex<State>>) -> Result<Value
                 (JobStatus::Failed, None)
             }
             Err(_) => {
-                terminate_child(&mut child, pid).await;
+                terminate_child(&mut child, &identity_for_task).await;
                 (JobStatus::TimedOut, None)
             }
         };
         let mut state = state_for_task.lock().await;
-        state.running_pids.remove(&job_id_for_task);
+        state.running_jobs.remove(&job_id_for_task);
+        crate::job_runtime::remove(&jobs_dir_for_task, &job_id_for_task);
         update_job(&mut state, &job_id_for_task, status, exit_code);
     });
 
@@ -858,21 +883,21 @@ fn force_update_job(state: &mut State, job_id: &str, status: JobStatus, code: Op
     }
 }
 
-async fn terminate_child(child: &mut tokio::process::Child, pid: u32) {
+async fn terminate_child(child: &mut tokio::process::Child, identity: &RuntimeIdentity) {
     #[cfg(unix)]
     {
-        let _ = send_process_group_signal(pid, "TERM").await;
+        let _ = crate::job_runtime::signal_process_group(identity, "TERM", false);
         if tokio::time::timeout(std::time::Duration::from_secs(2), child.wait())
             .await
             .is_err()
         {
-            let _ = send_process_group_signal(pid, "KILL").await;
+            let _ = crate::job_runtime::signal_process_group(identity, "KILL", false);
             let _ = child.wait().await;
         }
     }
     #[cfg(not(unix))]
     {
-        let _ = pid;
+        let _ = identity;
         let _ = child.kill().await;
         let _ = child.wait().await;
     }
@@ -1045,9 +1070,9 @@ async fn tool_kill_job(args: Value, state: Arc<Mutex<State>>) -> Result<Value> {
     let pid = {
         let state = state.lock().await;
         state
-            .running_pids
+            .running_jobs
             .get(&job_id)
-            .copied()
+            .map(|process| process.identity.pid)
             .ok_or_else(|| anyhow!("job '{}' is not running in this MCP session", job_id))?
     };
 
@@ -1074,7 +1099,7 @@ async fn tool_kill_job(args: Value, state: Arc<Mutex<State>>) -> Result<Value> {
     }
 
     let mut state = state.lock().await;
-    state.running_pids.remove(&job_id);
+    state.running_jobs.remove(&job_id);
     force_update_job(&mut state, &job_id, JobStatus::Cancelled, None);
     Ok(json!({"job_id": job_id, "status": "cancelled"}))
 }

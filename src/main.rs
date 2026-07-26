@@ -8,6 +8,7 @@ mod deploy;
 mod engagement;
 mod exec;
 mod input;
+mod job_runtime;
 mod library;
 mod mcp;
 mod path_complete;
