@@ -105,29 +105,32 @@ impl CveStore {
     }
 
     pub fn upsert(&mut self, record: &CveRecord) -> Result<bool> {
-        let exists: bool = self
-            .conn
-            .query_row(
-                "SELECT 1 FROM cves WHERE id = ?1",
-                params![record.id],
-                |_| Ok(true),
-            )
-            .unwrap_or(false);
+        self.conn
+            .execute_batch("SAVEPOINT chronosphere_cve_upsert")?;
+        let result = (|| -> Result<bool> {
+            let exists: bool = self
+                .conn
+                .query_row(
+                    "SELECT 1 FROM cves WHERE id = ?1",
+                    params![record.id],
+                    |_| Ok(true),
+                )
+                .unwrap_or(false);
 
-        let mut merged = if exists {
-            self.get(&record.id)?.unwrap_or_else(|| record.clone())
-        } else {
-            record.clone()
-        };
+            let mut merged = if exists {
+                self.get(&record.id)?.unwrap_or_else(|| record.clone())
+            } else {
+                record.clone()
+            };
 
-        merge_record(&mut merged, record);
+            merge_record(&mut merged, record);
 
-        let sources_json = serde_json::to_string(&merged.sources)?;
-        let fts_text = build_fts_text(&merged);
-        let now = Utc::now().to_rfc3339();
+            let sources_json = serde_json::to_string(&merged.sources)?;
+            let fts_text = build_fts_text(&merged);
+            let now = Utc::now().to_rfc3339();
 
-        self.conn.execute(
-            r#"INSERT INTO cves (
+            self.conn.execute(
+                r#"INSERT INTO cves (
                 id, published, modified, description, cvss_v31, cvss_v40, severity,
                 vector_v31, in_kev, kev_date_added, kev_due_date, epss_score,
                 epss_percentile, sources, fts_text, updated_at
@@ -141,30 +144,44 @@ impl CveStore {
                 epss_score=excluded.epss_score, epss_percentile=excluded.epss_percentile,
                 sources=excluded.sources, fts_text=excluded.fts_text, updated_at=excluded.updated_at
             "#,
-            params![
-                merged.id,
-                merged.published,
-                merged.modified,
-                merged.description,
-                merged.cvss_v31,
-                merged.cvss_v40,
-                merged.severity,
-                merged.vector_v31,
-                merged.in_kev as i32,
-                merged.kev_date_added,
-                merged.kev_due_date,
-                merged.epss_score,
-                merged.epss_percentile,
-                sources_json,
-                fts_text,
-                now,
-            ],
-        )?;
+                params![
+                    merged.id,
+                    merged.published,
+                    merged.modified,
+                    merged.description,
+                    merged.cvss_v31,
+                    merged.cvss_v40,
+                    merged.severity,
+                    merged.vector_v31,
+                    merged.in_kev as i32,
+                    merged.kev_date_added,
+                    merged.kev_due_date,
+                    merged.epss_score,
+                    merged.epss_percentile,
+                    sources_json,
+                    fts_text,
+                    now,
+                ],
+            )?;
 
-        self.replace_children(&merged)?;
-        self.rebuild_fts_row(&merged)?;
+            self.replace_children(&merged)?;
+            self.rebuild_fts_row(&merged)?;
 
-        Ok(!exists)
+            Ok(!exists)
+        })();
+        match result {
+            Ok(value) => {
+                self.conn
+                    .execute_batch("RELEASE SAVEPOINT chronosphere_cve_upsert")?;
+                Ok(value)
+            }
+            Err(err) => {
+                let _ = self.conn.execute_batch(
+                "ROLLBACK TO SAVEPOINT chronosphere_cve_upsert;                              RELEASE SAVEPOINT chronosphere_cve_upsert",
+            );
+                Err(err)
+            }
+        }
     }
 
     fn replace_children(&mut self, record: &CveRecord) -> Result<()> {
