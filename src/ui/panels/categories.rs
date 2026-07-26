@@ -11,7 +11,11 @@ pub fn render(f: &mut Frame, area: Rect, app: &App, hit: &mut ListRegion) {
     hit.panel = area;
     hit.list_inner = ListRegion::block_inner(area);
     let is_focused = app.focus == Focus::Categories;
-    let border_style = if is_focused { Theme::border_active() } else { Theme::border() };
+    let border_style = if is_focused {
+        Theme::border_active()
+    } else {
+        Theme::border()
+    };
     let block = Block::default()
         .borders(Borders::ALL)
         .title(Span::styled(" categories ", Theme::accent_bold()))

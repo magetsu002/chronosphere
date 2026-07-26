@@ -72,9 +72,8 @@ fn build_where(filter: &CveFilter) -> (String, Vec<Value>) {
             where_clauses.push("0".into());
         } else {
             let start = params.len() + 1;
-            let placeholders: Vec<String> = (0..ids.len())
-                .map(|i| format!("?{}", start + i))
-                .collect();
+            let placeholders: Vec<String> =
+                (0..ids.len()).map(|i| format!("?{}", start + i)).collect();
             where_clauses.push(format!("c.id IN ({})", placeholders.join(", ")));
             for id in ids {
                 params.push(Value::Text(id));

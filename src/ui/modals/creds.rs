@@ -25,7 +25,9 @@ pub fn render(f: &mut Frame, area: Rect, app: &App, list_hit: &mut Option<ListRe
 
     match &modal.state {
         CredsModalState::List { cursor } => render_list(f, inner, app, modal, *cursor, list_hit),
-        CredsModalState::Edit { fields, focused, .. } => {
+        CredsModalState::Edit {
+            fields, focused, ..
+        } => {
             *list_hit = None;
             render_edit(f, inner, fields, *focused);
         }

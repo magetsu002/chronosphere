@@ -134,7 +134,11 @@ fn draw_clock(f: &mut Frame, area: Rect, splash: &SplashState) {
             for i in 0..60 {
                 let a = i as f64 * (2.0 * PI / 60.0) + start;
                 let is_hour = i % 5 == 0;
-                let inner = if is_hour { r_dial * 0.88 } else { r_dial * 0.92 };
+                let inner = if is_hour {
+                    r_dial * 0.88
+                } else {
+                    r_dial * 0.92
+                };
                 let outer = r_dial * 0.96;
                 ctx.draw(&CanvasLine {
                     x1: inner * a.cos(),
@@ -288,11 +292,7 @@ mod tests {
             .expect("draw splash");
         // Smoke: the signature text should land somewhere on the buffer.
         let buf = terminal.backend().buffer().clone();
-        let s = buf
-            .content()
-            .iter()
-            .map(|c| c.symbol())
-            .collect::<String>();
+        let s = buf.content().iter().map(|c| c.symbol()).collect::<String>();
         assert!(
             s.contains("CyberChronos") && s.contains("@CyberChronos00"),
             "signature missing from splash buffer"

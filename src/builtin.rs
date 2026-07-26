@@ -23,8 +23,7 @@ fn collect_files<'a>(dir: &'a Dir<'a>, out: &mut Vec<&'a File<'a>>) {
 /// Extract every embedded TOML into `dest`, creating the directory if needed.
 /// If `overwrite` is false, existing files are left alone.
 pub fn extract_to(dest: &Path, overwrite: bool) -> Result<usize> {
-    fs::create_dir_all(dest)
-        .with_context(|| format!("create {}", dest.display()))?;
+    fs::create_dir_all(dest).with_context(|| format!("create {}", dest.display()))?;
     let mut files = Vec::new();
     collect_files(&EMBEDDED, &mut files);
     let mut written = 0usize;
@@ -37,8 +36,7 @@ pub fn extract_to(dest: &Path, overwrite: bool) -> Result<usize> {
         if !overwrite && out.exists() {
             continue;
         }
-        fs::write(&out, file.contents())
-            .with_context(|| format!("write {}", out.display()))?;
+        fs::write(&out, file.contents()).with_context(|| format!("write {}", out.display()))?;
         written += 1;
     }
     Ok(written)

@@ -90,7 +90,9 @@ fn expand_placeholders(template: &str, ctx: &RenderContext) -> PlaceholderPass {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::engagement::{AccessPoint, CredKind, CredentialProfile, ExecutionMode, Pivot, Target};
+    use crate::engagement::{
+        AccessPoint, CredKind, CredentialProfile, ExecutionMode, Pivot, Target,
+    };
     use std::path::PathBuf;
 
     fn ctx() -> RenderContext {

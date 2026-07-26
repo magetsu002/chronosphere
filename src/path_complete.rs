@@ -58,9 +58,7 @@ pub fn looks_like_path(token: &str, line: &str, token_start: usize) -> bool {
     if before.ends_with('=') {
         return true;
     }
-    const FLAGS_WITH_SPACE: &[&str] = &[
-        "-w ", "-W ", "-f ", "-o ", "-F ", "-d ", "-i ",
-    ];
+    const FLAGS_WITH_SPACE: &[&str] = &["-w ", "-W ", "-f ", "-o ", "-F ", "-d ", "-i "];
     for flag in FLAGS_WITH_SPACE {
         if before.ends_with(flag) {
             return true;
@@ -93,7 +91,11 @@ pub fn completions(token: &str, extra_roots: &[PathBuf]) -> Vec<String> {
     let (search_dir, prefix, rebuild_prefix) = split_token(token, extra_roots);
     let show_hidden = prefix.starts_with('.');
     let mut names = list_matching_entries(&search_dir, &prefix, show_hidden);
-    if names.is_empty() && !extra_roots.is_empty() && !token.contains('/') && !token.starts_with('~') {
+    if names.is_empty()
+        && !extra_roots.is_empty()
+        && !token.contains('/')
+        && !token.starts_with('~')
+    {
         for root in extra_roots {
             if !root.is_dir() {
                 continue;
@@ -164,8 +166,12 @@ pub fn replace_token(
     if let Some(b) = block {
         ta.set_block(b);
     }
-    let new_col = (start + replacement.len()).min(ta.lines().get(line_idx).map(|l| l.len()).unwrap_or(0));
-    ta.move_cursor(tui_textarea::CursorMove::Jump(line_idx as u16, new_col as u16));
+    let new_col =
+        (start + replacement.len()).min(ta.lines().get(line_idx).map(|l| l.len()).unwrap_or(0));
+    ta.move_cursor(tui_textarea::CursorMove::Jump(
+        line_idx as u16,
+        new_col as u16,
+    ));
     *textarea = ta;
 }
 
@@ -330,7 +336,11 @@ mod tests {
 
     #[test]
     fn looks_like_path_after_flag() {
-        assert!(looks_like_path("rockyou.txt", "feroxbuster -w rockyou.txt", 15));
+        assert!(looks_like_path(
+            "rockyou.txt",
+            "feroxbuster -w rockyou.txt",
+            15
+        ));
         assert!(looks_like_path("rock", "feroxbuster -w rock", 15));
         assert!(looks_like_path("you", "feroxbuster -w rockyou.txt", 22));
     }
@@ -341,9 +351,6 @@ mod tests {
             "/usr/share/wordlists/rockyou.txt".into(),
             "/usr/share/wordlists/rockyou-small.txt".into(),
         ];
-        assert_eq!(
-            longest_common_prefix(&v),
-            "/usr/share/wordlists/rockyou"
-        );
+        assert_eq!(longest_common_prefix(&v), "/usr/share/wordlists/rockyou");
     }
 }

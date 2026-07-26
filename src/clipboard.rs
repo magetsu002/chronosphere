@@ -40,10 +40,7 @@ pub fn format_yank_message(r: &CopyReport) -> String {
         parts.push("tmux buffer");
     }
 
-    let file_hint = r
-        .file_path
-        .as_ref()
-        .map(|p| format!("cat {}", p.display()));
+    let file_hint = r.file_path.as_ref().map(|p| format!("cat {}", p.display()));
 
     let paste_hint = if r.tmux_buffer {
         "paste: open another tmux pane, then Ctrl-b ] (won't work inside Chronosphere)"
@@ -111,10 +108,7 @@ fn copy_to_tmux_paste_buffer(text: &str) -> Result<()> {
         return Ok(());
     }
 
-    if !pipe_to_command(
-        &mut Command::new("tmux").args(["set-buffer", "-"]),
-        text,
-    )? {
+    if !pipe_to_command(&mut Command::new("tmux").args(["set-buffer", "-"]), text)? {
         anyhow::bail!("tmux set-buffer failed");
     }
     Ok(())
@@ -146,11 +140,8 @@ fn copy_system_clipboard_linux(text: &str) -> bool {
     }
     if which::which("xclip").is_ok() {
         for sel in ["clipboard", "primary"] {
-            if pipe_to_command(
-                &mut Command::new("xclip").args(["-selection", sel]),
-                text,
-            )
-            .unwrap_or(false)
+            if pipe_to_command(&mut Command::new("xclip").args(["-selection", sel]), text)
+                .unwrap_or(false)
             {
                 return true;
             }
