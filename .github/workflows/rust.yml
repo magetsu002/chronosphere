@@ -24,8 +24,27 @@ jobs:
       - name: Formatting
         run: cargo fmt --check
       - name: Clippy correctness
-        run: cargo clippy --locked --all-targets --all-features -- -D clippy::correctness -D clippy::suspicious
+        id: clippy
+        shell: bash
+        run: |
+          set +e
+          cargo clippy --locked --all-targets --all-features -- -D clippy::correctness -D clippy::suspicious 2>&1 | tee clippy.log
+          status=${PIPESTATUS[0]}
+          echo "status=${status}" >> "$GITHUB_OUTPUT"
+          exit 0
       - name: Tests
         run: cargo test --locked --all-targets
       - name: Release build
         run: cargo build --locked --release
+      - name: Upload validation logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-validation-logs
+          path: clippy.log
+          if-no-files-found: error
+      - name: Enforce Clippy result
+        if: steps.clippy.outputs.status != '0'
+        run: |
+          tail -n 200 clippy.log
+          exit 1
