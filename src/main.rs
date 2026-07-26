@@ -12,6 +12,7 @@ mod library;
 mod mcp;
 mod path_complete;
 mod render;
+mod security;
 mod ui;
 mod vim;
 
