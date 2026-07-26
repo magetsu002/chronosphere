@@ -1,0 +1,49 @@
+name: Replay hardening milestones V3
+
+on:
+  push:
+    branches: [fix/trust-and-reliability-v3]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: chronosphere-hardening-v3
+  cancel-in-progress: true
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/trust-and-reliability-v3
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.88"
+          components: rustfmt, clippy
+      - name: Restore, patch, replay, and publish
+        shell: bash
+        run: |
+          git config user.name "Chronosphere Hardening"
+          git config user.email "actions@users.noreply.github.com"
+          set +e
+          {
+            git show ebcf539d483f13c1a6905ff62a807be18a17489b:.github/replay_hardening_v3.py > /tmp/replay_hardening_v3.py
+            sed -i 's/v3-replay-failure\.log/v3-replay-failure.txt/' /tmp/replay_hardening_v3.py
+            python3 .github/fix_replay_v3_context.py
+            python3 .github/fix_replay_v3_compile.py
+            python3 /tmp/replay_hardening_v3.py
+          } > /tmp/v3-workflow.log 2>&1
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            rm -f .github/workflows/replay-hardening-v3.yml
+            cp /tmp/v3-workflow.log .github/v3-workflow-failure.txt
+            git add -A
+            git commit -m "chore: capture hardening workflow failure"
+            git push origin HEAD:fix/trust-and-reliability-v3
+          fi
