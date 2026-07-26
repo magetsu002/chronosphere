@@ -1,5 +1,5 @@
 $ git rev-parse HEAD
-b5ef47bd4faf7e1f53e6e5742b5c51fab9fdd798
+5b946f2a13ed11c6195c70d26492fa8bc300c4d3
 
 $ git config user.name Chronosphere Hardening
 $ git config user.email actions@users.noreply.github.com
@@ -10,12 +10,1579 @@ From https://github.com/magetsu002/chronosphere
 $ git cherry-pick --no-commit -X ours a74ff8e7bd47abc5e2471d90f58fb767509ac37a
 Auto-merging src/cli.rs
 
-Traceback (most recent call last):
-  File "/tmp/replay_hardening_v3.py", line 391, in main
-    patch_context()
-  File "/tmp/replay_hardening_v3.py", line 159, in patch_context
-    raise RuntimeError("resolve context call not found")
-RuntimeError: resolve context call not found
+$ cargo fmt
+$ git add -A
+$ git diff --cached --quiet
+$ git commit -m fix: enforce explicit and safe execution context
+[fix/trust-and-reliability-v3 efd217a] fix: enforce explicit and safe execution context
+ 43 files changed, 956 insertions(+), 587 deletions(-)
 
-$ git reset --hard b5ef47bd4faf7e1f53e6e5742b5c51fab9fdd798
-HEAD is now at b5ef47b chore: rerun hardening with tracked diagnostics
+$ git cherry-pick --no-commit -X ours 27cdf8d242b47086fc905b6bb391b456980f51af
+Auto-merging src/cli.rs
+Auto-merging src/engagement/mod.rs
+Auto-merging src/exec/mod.rs
+Auto-merging src/main.rs
+Auto-merging src/mcp/mod.rs
+Auto-merging src/mcp/tools.rs
+
+$ git cherry-pick --no-commit -X ours a830dbe03f8bd185cd74bf92ebaddf2c05f57236
+Auto-merging src/engagement/history.rs
+
+$ cargo fmt
+$ git add -A
+$ git diff --cached --quiet
+$ git commit -m fix: redact secrets from storage and output
+[fix/trust-and-reliability-v3 7b11184] fix: redact secrets from storage and output
+ 13 files changed, 318 insertions(+), 75 deletions(-)
+ create mode 100644 src/security.rs
+
+$ git cherry-pick --no-commit -X ours f770bad6e78f3a6fdcd6a0318ce9a07235321af4
+Auto-merging src/engagement/history.rs
+Auto-merging src/mcp/tools.rs
+
+$ git cherry-pick --no-commit -X ours be75b1f39c9b8a468a050877a21d8149a557c68f
+Auto-merging src/ui/panels/jobs.rs
+
+$ git cherry-pick --no-commit -X ours 91f516ebe2273b0fcccf056113c02bfdda9100a2
+Auto-merging src/render/context.rs
+Auto-merging src/ui/modals/job_log.rs
+
+$ cargo fmt
+$ git add -A
+$ git diff --cached --quiet
+$ git commit -m fix: add reliable job cancellation and timeout handling
+[fix/trust-and-reliability-v3 c14bfd7] fix: add reliable job cancellation and timeout handling
+ 5 files changed, 140 insertions(+), 65 deletions(-)
+
+$ git cherry-pick --no-commit -X ours ec0b38503022eb39475fed3a23f4d71a26546e63
+Auto-merging Cargo.toml
+Auto-merging src/deploy.rs
+Auto-merging src/exec/ssh.rs
+
+$ git cherry-pick --no-commit -X ours 3edd2d6abaacd65d98a1c8dc4655356ab62b897f
+Auto-merging src/exec/ssh.rs
+
+$ cargo generate-lockfile
+[1m[32m    Updating[0m crates.io index
+[1m[32m     Locking[0m 333 packages to latest Rust 1.88.0 compatible versions
+[1m[36m      Adding[0m base64 v0.22.1 [1m[33m(available: v0.23.0)[0m
+[1m[36m      Adding[0m crossterm v0.28.1 [1m[33m(available: v0.29.0)[0m
+[1m[36m      Adding[0m directories v5.0.1 [1m[33m(available: v6.0.0)[0m
+[1m[36m      Adding[0m notify v6.1.1 [1m[33m(available: v8.2.0)[0m
+[1m[36m      Adding[0m rand v0.8.7 [1m[33m(available: v0.10.2)[0m
+[1m[36m      Adding[0m ratatui v0.29.0 [1m[33m(available: v0.30.2)[0m
+[1m[36m      Adding[0m reqwest v0.12.28 [1m[33m(available: v0.13.4)[0m
+[1m[36m      Adding[0m rusqlite v0.32.1 [1m[33m(available: v0.40.1)[0m
+[1m[36m      Adding[0m thiserror v1.0.69 [1m[33m(available: v2.0.19)[0m
+[1m[36m      Adding[0m toml v0.8.23 [1m[33m(available: v1.1.3+spec-1.1.0)[0m
+[1m[36m      Adding[0m unicode-width v0.2.0 [1m[33m(available: v0.2.2)[0m
+[1m[36m      Adding[0m which v6.0.3 [1m[33m(available: v8.0.5)[0m
+
+$ cargo fmt
+$ git add -A
+$ git diff --cached --quiet
+$ git commit -m fix: harden ssh deployment and authentication
+[fix/trust-and-reliability-v3 31c6db6] fix: harden ssh deployment and authentication
+ 4 files changed, 335 insertions(+), 440 deletions(-)
+
+$ git cherry-pick --no-commit -X ours 219ffb073762f7d66bae10724ab672281046d5a7
+Auto-merging src/cli.rs
+Auto-merging src/exec/mod.rs
+Auto-merging src/library/mod.rs
+Auto-merging src/render/condition.rs
+Auto-merging src/render/mod.rs
+
+$ git cherry-pick --no-commit -X ours 33ea82916ff43882e60a6b16178cc3b5295376ae
+Auto-merging src/render/condition.rs
+
+$ cargo fmt
+$ git add -A
+$ git diff --cached --quiet
+$ git commit -m fix: validate templates before command execution
+[fix/trust-and-reliability-v3 f2a585d] fix: validate templates before command execution
+ 5 files changed, 138 insertions(+), 26 deletions(-)
+
+$ git cherry-pick --no-commit -X ours ac8fe981ec5fe92c12d53fdcd08d34370fb80057
+Auto-merging src/cve/store.rs
+Auto-merging src/engagement/mod.rs
+
+$ git show origin/fix/trust-and-reliability-v1:src/cve/store.rs
+use crate::config;
+use crate::cve::filter::build_search_query;
+use crate::cve::model::{CveFilter, CveRecord, CveReference, CveStatus};
+
+use anyhow::{Context, Result};
+use chrono::Utc;
+use rusqlite::{Connection, params};
+use std::collections::BTreeSet;
+use std::path::Path;
+
+const SCHEMA: &str = r#"
+CREATE TABLE IF NOT EXISTS cves (
+    id TEXT PRIMARY KEY NOT NULL,
+    published TEXT,
+    modified TEXT,
+    description TEXT NOT NULL DEFAULT '',
+    cvss_v31 REAL,
+    cvss_v40 REAL,
+    severity TEXT,
+    vector_v31 TEXT,
+    in_kev INTEGER NOT NULL DEFAULT 0,
+    kev_date_added TEXT,
+    kev_due_date TEXT,
+    epss_score REAL,
+    epss_percentile REAL,
+    sources TEXT NOT NULL DEFAULT '[]',
+    fts_text TEXT NOT NULL DEFAULT '',
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS cve_products (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cve_id TEXT NOT NULL REFERENCES cves(id) ON DELETE CASCADE,
+    vendor TEXT NOT NULL DEFAULT '',
+    product TEXT NOT NULL DEFAULT '',
+    version_start TEXT,
+    version_end TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_cve_products_cve ON cve_products(cve_id);
+CREATE INDEX IF NOT EXISTS idx_cve_products_vendor ON cve_products(vendor);
+CREATE INDEX IF NOT EXISTS idx_cve_products_product ON cve_products(product);
+
+CREATE TABLE IF NOT EXISTS cve_cwes (
+    cve_id TEXT NOT NULL REFERENCES cves(id) ON DELETE CASCADE,
+    cwe TEXT NOT NULL,
+    PRIMARY KEY (cve_id, cwe)
+);
+
+CREATE TABLE IF NOT EXISTS cve_refs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cve_id TEXT NOT NULL REFERENCES cves(id) ON DELETE CASCADE,
+    url TEXT NOT NULL,
+    source TEXT,
+    tags TEXT NOT NULL DEFAULT '[]'
+);
+
+CREATE TABLE IF NOT EXISTS cve_aliases (
+    cve_id TEXT NOT NULL REFERENCES cves(id) ON DELETE CASCADE,
+    alias_id TEXT NOT NULL,
+    PRIMARY KEY (cve_id, alias_id)
+);
+
+CREATE TABLE IF NOT EXISTS sync_runs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    provider TEXT NOT NULL,
+    started_at TEXT NOT NULL,
+    finished_at TEXT,
+    status TEXT NOT NULL,
+    records_added INTEGER DEFAULT 0,
+    records_updated INTEGER DEFAULT 0,
+    error TEXT
+);
+
+CREATE VIRTUAL TABLE IF NOT EXISTS cves_fts USING fts5(
+    id UNINDEXED,
+    description,
+    products,
+    cwes,
+    refs_text
+);
+"#;
+
+pub struct CveStore {
+    conn: Connection,
+}
+
+impl CveStore {
+    pub fn open() -> Result<Self> {
+        let path = config::cve_db_path();
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        let conn =
+            Connection::open(&path).with_context(|| format!("open cve db {}", path.display()))?;
+        conn.execute_batch("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;")?;
+        conn.execute_batch(SCHEMA)?;
+        Ok(Self { conn })
+    }
+
+    pub fn open_at(path: &Path) -> Result<Self> {
+        let conn = Connection::open(path)?;
+        conn.execute_batch("PRAGMA foreign_keys = ON;")?;
+        conn.execute_batch(SCHEMA)?;
+        Ok(Self { conn })
+    }
+
+    pub fn upsert(&mut self, record: &CveRecord) -> Result<bool> {
+        self.conn
+            .execute_batch("SAVEPOINT chronosphere_cve_upsert")?;
+        let result = (|| -> Result<bool> {
+            let exists: bool = self
+                .conn
+                .query_row(
+                    "SELECT 1 FROM cves WHERE id = ?1",
+                    params![record.id],
+                    |_| Ok(true),
+                )
+                .unwrap_or(false);
+
+            let mut merged = if exists {
+                self.get(&record.id)?.unwrap_or_else(|| record.clone())
+            } else {
+                record.clone()
+            };
+
+            merge_record(&mut merged, record);
+
+            let sources_json = serde_json::to_string(&merged.sources)?;
+            let fts_text = build_fts_text(&merged);
+            let now = Utc::now().to_rfc3339();
+
+            self.conn.execute(
+                r#"INSERT INTO cves (
+                id, published, modified, description, cvss_v31, cvss_v40, severity,
+                vector_v31, in_kev, kev_date_added, kev_due_date, epss_score,
+                epss_percentile, sources, fts_text, updated_at
+            ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16)
+            ON CONFLICT(id) DO UPDATE SET
+                published=excluded.published, modified=excluded.modified,
+                description=excluded.description, cvss_v31=excluded.cvss_v31,
+                cvss_v40=excluded.cvss_v40, severity=excluded.severity,
+                vector_v31=excluded.vector_v31, in_kev=excluded.in_kev,
+                kev_date_added=excluded.kev_date_added, kev_due_date=excluded.kev_due_date,
+                epss_score=excluded.epss_score, epss_percentile=excluded.epss_percentile,
+                sources=excluded.sources, fts_text=excluded.fts_text, updated_at=excluded.updated_at
+            "#,
+                params![
+                    merged.id,
+                    merged.published,
+                    merged.modified,
+                    merged.description,
+                    merged.cvss_v31,
+                    merged.cvss_v40,
+                    merged.severity,
+                    merged.vector_v31,
+                    merged.in_kev as i32,
+                    merged.kev_date_added,
+                    merged.kev_due_date,
+                    merged.epss_score,
+                    merged.epss_percentile,
+                    sources_json,
+                    fts_text,
+                    now,
+                ],
+            )?;
+
+            self.replace_children(&merged)?;
+            self.rebuild_fts_row(&merged)?;
+
+            Ok(!exists)
+        })();
+        match result {
+            Ok(value) => {
+                self.conn
+                    .execute_batch("RELEASE SAVEPOINT chronosphere_cve_upsert")?;
+                Ok(value)
+            }
+            Err(err) => {
+                let _ = self.conn.execute_batch(
+                "ROLLBACK TO SAVEPOINT chronosphere_cve_upsert;                              RELEASE SAVEPOINT chronosphere_cve_upsert",
+            );
+                Err(err)
+            }
+        }
+    }
+
+    fn replace_children(&mut self, record: &CveRecord) -> Result<()> {
+        self.conn.execute(
+            "DELETE FROM cve_products WHERE cve_id = ?1",
+            params![record.id],
+        )?;
+        self.conn
+            .execute("DELETE FROM cve_cwes WHERE cve_id = ?1", params![record.id])?;
+        self.conn
+            .execute("DELETE FROM cve_refs WHERE cve_id = ?1", params![record.id])?;
+        self.conn.execute(
+            "DELETE FROM cve_aliases WHERE cve_id = ?1",
+            params![record.id],
+        )?;
+
+        for p in &record.products {
+            self.conn.execute(
+                "INSERT INTO cve_products (cve_id, vendor, product, version_start, version_end) VALUES (?1,?2,?3,?4,?5)",
+                params![record.id, p.vendor, p.product, p.version_start, p.version_end],
+            )?;
+        }
+        for cwe in &record.cwes {
+            self.conn.execute(
+                "INSERT OR IGNORE INTO cve_cwes (cve_id, cwe) VALUES (?1,?2)",
+                params![record.id, cwe],
+            )?;
+        }
+        for r in &record.references {
+            let tags = serde_json::to_string(&r.tags)?;
+            self.conn.execute(
+                "INSERT INTO cve_refs (cve_id, url, source, tags) VALUES (?1,?2,?3,?4)",
+                params![record.id, r.url, r.source, tags],
+            )?;
+        }
+        for alias in &record.aliases {
+            self.conn.execute(
+                "INSERT OR IGNORE INTO cve_aliases (cve_id, alias_id) VALUES (?1,?2)",
+                params![record.id, alias],
+            )?;
+        }
+        Ok(())
+    }
+
+    fn rebuild_fts_row(&mut self, record: &CveRecord) -> Result<()> {
+        let products: String = record
+            .products
+            .iter()
+            .map(|p| format!("{} {}", p.vendor, p.product))
+            .collect::<Vec<_>>()
+            .join(" ");
+        let cwes = record.cwes.join(" ");
+        let refs_text: String = record
+            .references
+            .iter()
+            .map(|r| r.url.as_str())
+            .collect::<Vec<_>>()
+            .join(" ");
+
+        self.conn
+            .execute("DELETE FROM cves_fts WHERE id = ?1", params![record.id])?;
+        self.conn.execute(
+            "INSERT INTO cves_fts (id, description, products, cwes, refs_text) VALUES (?1,?2,?3,?4,?5)",
+            params![record.id, record.description, products, cwes, refs_text],
+        )?;
+        Ok(())
+    }
+
+    pub fn get(&self, id: &str) -> Result<Option<CveRecord>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, published, modified, description, cvss_v31, cvss_v40, severity,
+                    vector_v31, in_kev, kev_date_added, kev_due_date, epss_score, epss_percentile, sources
+             FROM cves WHERE id = ?1",
+        )?;
+        let mut rows = stmt.query(params![id])?;
+        if let Some(row) = rows.next()? {
+            let sources_str: String = row.get(13)?;
+            let sources: BTreeSet<String> = serde_json::from_str(&sources_str).unwrap_or_default();
+            let mut rec = CveRecord {
+                id: row.get(0)?,
+                published: row.get(1)?,
+                modified: row.get(2)?,
+                description: row.get(3)?,
+                cvss_v31: row.get(4)?,
+                cvss_v40: row.get(5)?,
+                severity: row.get(6)?,
+                vector_v31: row.get(7)?,
+                in_kev: row.get::<_, i32>(8)? != 0,
+                kev_date_added: row.get(9)?,
+                kev_due_date: row.get(10)?,
+                epss_score: row.get(11)?,
+                epss_percentile: row.get(12)?,
+                sources,
+                ..Default::default()
+            };
+            rec.products = self.load_products(&rec.id)?;
+            rec.cwes = self.load_cwes(&rec.id)?;
+            rec.references = self.load_refs(&rec.id)?;
+            rec.aliases = self.load_aliases(&rec.id)?;
+            Ok(Some(rec))
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn load_products(&self, cve_id: &str) -> Result<Vec<crate::cve::model::CveProduct>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT vendor, product, version_start, version_end FROM cve_products WHERE cve_id = ?1",
+        )?;
+        let rows = stmt.query_map(params![cve_id], |r| {
+            Ok(crate::cve::model::CveProduct {
+                vendor: r.get(0)?,
+                product: r.get(1)?,
+                version_start: r.get(2)?,
+                version_end: r.get(3)?,
+            })
+        })?;
+        rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
+    }
+
+    fn load_cwes(&self, cve_id: &str) -> Result<Vec<String>> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT cwe FROM cve_cwes WHERE cve_id = ?1")?;
+        let rows = stmt.query_map(params![cve_id], |r| r.get(0))?;
+        rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
+    }
+
+    fn load_refs(&self, cve_id: &str) -> Result<Vec<CveReference>> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT url, source, tags FROM cve_refs WHERE cve_id = ?1")?;
+        let rows = stmt.query_map(params![cve_id], |r| {
+            let tags_str: String = r.get(2)?;
+            Ok(CveReference {
+                url: r.get(0)?,
+                source: r.get(1)?,
+                tags: serde_json::from_str(&tags_str).unwrap_or_default(),
+            })
+        })?;
+        rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
+    }
+
+    fn load_aliases(&self, cve_id: &str) -> Result<Vec<String>> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT alias_id FROM cve_aliases WHERE cve_id = ?1")?;
+        let rows = stmt.query_map(params![cve_id], |r| r.get(0))?;
+        rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
+    }
+
+    pub fn search(&self, filter: &CveFilter) -> Result<Vec<CveRecord>> {
+        let (sql, params_vec) = build_search_query(filter);
+        let mut stmt = self.conn.prepare(&sql)?;
+        let ids: Vec<String> = Self::query_ids(&mut stmt, &params_vec)?;
+        let mut out = Vec::new();
+        for id in ids {
+            if let Some(rec) = self.get(&id)? {
+                out.push(rec);
+            }
+        }
+        Ok(out)
+    }
+
+    fn query_ids(
+        stmt: &mut rusqlite::Statement,
+        params_vec: &[rusqlite::types::Value],
+    ) -> Result<Vec<String>> {
+        let refs = Self::params_as_refs(params_vec);
+        let rows = stmt.query_map(refs.as_slice(), |r| r.get::<_, String>(0))?;
+        rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
+    }
+
+    fn params_as_refs(params_vec: &[rusqlite::types::Value]) -> Vec<&dyn rusqlite::ToSql> {
+        // Store bindings in a vec of enum wrappers so references live long enough.
+        // We re-bind per query call on the stack via match.
+        params_vec
+            .iter()
+            .map(|v| -> &dyn rusqlite::ToSql {
+                match v {
+                    rusqlite::types::Value::Text(s) => s,
+                    rusqlite::types::Value::Real(r) => r,
+                    rusqlite::types::Value::Integer(i) => i,
+                    rusqlite::types::Value::Blob(b) => b,
+                    rusqlite::types::Value::Null => &rusqlite::types::Null,
+                }
+            })
+            .collect()
+    }
+
+    pub fn status(&self) -> Result<CveStatus> {
+        let total: u64 = self
+            .conn
+            .query_row("SELECT COUNT(*) FROM cves", [], |r| r.get(0))?;
+        let kev_count: u64 =
+            self.conn
+                .query_row("SELECT COUNT(*) FROM cves WHERE in_kev = 1", [], |r| {
+                    r.get(0)
+                })?;
+        let last_sync: Option<String> = self
+            .conn
+            .query_row(
+                "SELECT finished_at FROM sync_runs WHERE status = 'ok' ORDER BY id DESC LIMIT 1",
+                [],
+                |r| r.get(0),
+            )
+            .ok();
+        let last_sync = last_sync.and_then(|s| s.parse().ok());
+        Ok(CveStatus {
+            total,
+            kev_count,
+            db_path: config::cve_db_path().display().to_string(),
+            db_size_bytes: config::cve_storage_size_bytes(),
+            last_sync,
+            last_nvd_feed: crate::cve::config::SyncState::load()
+                .feeds
+                .get("nvdcve-2.0-modified")
+                .and_then(|f| f.imported_at.clone()),
+        })
+    }
+
+    pub fn mark_kev(&mut self, id: &str, date_added: &str, due_date: Option<&str>) -> Result<bool> {
+        let n = self.conn.execute(
+            "UPDATE cves SET in_kev = 1, kev_date_added = ?2, kev_due_date = ?3 WHERE id = ?1",
+            params![id, date_added, due_date],
+        )?;
+        Ok(n > 0)
+    }
+
+    pub fn update_epss(&mut self, id: &str, score: f64, percentile: f64) -> Result<()> {
+        self.conn.execute(
+            "UPDATE cves SET epss_score = ?2, epss_percentile = ?3 WHERE id = ?1",
+            params![id, score, percentile],
+        )?;
+        Ok(())
+    }
+
+    pub fn ids_for_osv_enrich(&self, since: Option<&str>, limit: u32) -> Result<Vec<String>> {
+        if let Some(s) = since {
+            let sql = format!(
+                "SELECT id FROM cves WHERE modified > ?1 OR updated_at > ?1 ORDER BY modified DESC LIMIT {limit}"
+            );
+            let mut stmt = self.conn.prepare(&sql)?;
+            let rows = stmt.query_map(params![s], |r| r.get::<_, String>(0))?;
+            rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
+        } else {
+            let sql = format!("SELECT id FROM cves ORDER BY modified DESC LIMIT {limit}");
+            let mut stmt = self.conn.prepare(&sql)?;
+            let rows = stmt.query_map([], |r| r.get::<_, String>(0))?;
+            rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
+        }
+    }
+
+    pub fn log_sync_run(
+        &mut self,
+        provider: &str,
+        started: &str,
+        finished: &str,
+        status: &str,
+        added: u64,
+        updated: u64,
+        error: Option<&str>,
+    ) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO sync_runs (provider, started_at, finished_at, status, records_added, records_updated, error)
+             VALUES (?1,?2,?3,?4,?5,?6,?7)",
+            params![provider, started, finished, status, added, updated, error],
+        )?;
+        Ok(())
+    }
+}
+
+fn merge_record(existing: &mut CveRecord, incoming: &CveRecord) {
+    if incoming.published.is_some() {
+        existing.published = incoming.published.clone();
+    }
+    if incoming.modified.is_some() {
+        existing.modified = incoming.modified.clone();
+    }
+    if !incoming.description.is_empty() {
+        existing.description = incoming.description.clone();
+    }
+    if incoming.cvss_v31.is_some() {
+        existing.cvss_v31 = incoming.cvss_v31;
+    }
+    if incoming.cvss_v40.is_some() {
+        existing.cvss_v40 = incoming.cvss_v40;
+    }
+    if incoming.severity.is_some() {
+        existing.severity = incoming.severity.clone();
+    }
+    if incoming.vector_v31.is_some() {
+        existing.vector_v31 = incoming.vector_v31.clone();
+    }
+    if incoming.in_kev {
+        existing.in_kev = true;
+    }
+    if incoming.kev_date_added.is_some() {
+        existing.kev_date_added = incoming.kev_date_added.clone();
+    }
+    if incoming.kev_due_date.is_some() {
+        existing.kev_due_date = incoming.kev_due_date.clone();
+    }
+    if incoming.epss_score.is_some() {
+        existing.epss_score = incoming.epss_score;
+    }
+    if incoming.epss_percentile.is_some() {
+        existing.epss_percentile = incoming.epss_percentile;
+    }
+    existing.sources.extend(incoming.sources.iter().cloned());
+    if !incoming.products.is_empty() {
+        existing.products = incoming.products.clone();
+    }
+    if !incoming.cwes.is_empty() {
+        existing.cwes = incoming.cwes.clone();
+    }
+    if !incoming.references.is_empty() {
+        existing.references = incoming.references.clone();
+    }
+    for a in &incoming.aliases {
+        if !existing.aliases.contains(a) {
+            existing.aliases.push(a.clone());
+        }
+    }
+}
+
+fn build_fts_text(record: &CveRecord) -> String {
+    let products: String = record
+        .products
+        .iter()
+        .map(|p| format!("{} {}", p.vendor, p.product))
+        .collect::<Vec<_>>()
+        .join(" ");
+    format!(
+        "{} {} {} {}",
+        record.id,
+        record.description,
+        products,
+        record.cwes.join(" ")
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cve::model::{CveProduct, severity_from_score};
+
+    #[test]
+    fn upsert_and_search() {
+        let dir = std::env::temp_dir().join(format!("chrono-cve-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let db = dir.join("test.db");
+        let mut store = CveStore::open_at(&db).unwrap();
+
+        let mut rec = CveRecord {
+            id: "CVE-2026-9256".into(),
+            description: "NGINX heap overflow remote code execution".into(),
+            cvss_v31: Some(8.1),
+            severity: Some(severity_from_score(8.1).into()),
+            products: vec![CveProduct {
+                vendor: "f5".into(),
+                product: "nginx".into(),
+                ..Default::default()
+            }],
+            cwes: vec!["CWE-122".into()],
+            ..Default::default()
+        };
+        rec.sources.insert("nvd".into());
+        assert!(store.upsert(&rec).unwrap());
+
+        let filter = CveFilter {
+            query: Some("nginx".into()),
+            limit: 10,
+            ..Default::default()
+        };
+        let hits = store.search(&filter).unwrap();
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].id, "CVE-2026-9256");
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}
+
+$ cargo fmt
+$ git add -A
+$ git diff --cached --quiet
+$ git commit -m fix: make engagement and cve persistence resilient
+[fix/trust-and-reliability-v3 dbcd433] fix: make engagement and cve persistence resilient
+ 1 file changed, 59 insertions(+), 42 deletions(-)
+
+$ git show origin/fix/trust-and-reliability-v1:.github/workflows/rust.yml
+name: Rust
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rust-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.88"
+          components: rustfmt, clippy
+      - name: Formatting
+        run: cargo fmt --check
+      - name: Clippy correctness
+        id: clippy
+        shell: bash
+        run: |
+          set +e
+          cargo clippy --locked --all-targets --all-features -- -D clippy::correctness -D clippy::suspicious 2>&1 | tee clippy.log
+          status=${PIPESTATUS[0]}
+          echo "status=${status}" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Tests
+        run: cargo test --locked --all-targets
+      - name: Release build
+        run: cargo build --locked --release
+      - name: Upload validation logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-validation-logs
+          path: clippy.log
+          if-no-files-found: error
+          retention-days: 7
+      - name: Enforce Clippy result
+        if: steps.clippy.outputs.status != '0'
+        run: |
+          tail -n 200 clippy.log
+          exit 1
+
+$ git show origin/fix/trust-and-reliability-v1:.github/workflows/release.yml
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.88"
+          components: rustfmt, clippy
+      - run: cargo fmt --check
+      - run: cargo clippy --locked --all-targets --all-features -- -D clippy::correctness -D clippy::suspicious
+      - run: cargo test --locked --all-targets
+
+  build-linux:
+    needs: validate
+    name: ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            archive: chronosphere-${{ github.ref_name }}-x86_64-unknown-linux-gnu
+          - target: x86_64-unknown-linux-musl
+            archive: chronosphere-${{ github.ref_name }}-x86_64-unknown-linux-musl
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.88"
+          targets: ${{ matrix.target }}
+      - name: Install musl toolchain
+        if: contains(matrix.target, 'musl')
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+      - name: Build release binary
+        run: cargo build --locked --release --target ${{ matrix.target }}
+      - name: Package archive
+        run: |
+          install -Dm755 \
+            target/${{ matrix.target }}/release/chronosphere \
+            "${{ matrix.archive }}/chronosphere"
+          tar -czf "${{ matrix.archive }}.tar.gz" -C "${{ matrix.archive }}" chronosphere
+          sha256sum "${{ matrix.archive }}.tar.gz" > "${{ matrix.archive }}.tar.gz.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.archive }}
+          path: |
+            ${{ matrix.archive }}.tar.gz
+            ${{ matrix.archive }}.tar.gz.sha256
+
+  release:
+    name: Publish GitHub Release
+    needs: build-linux
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/**
+          generate_release_notes: true
+
+$ cargo generate-lockfile
+[1m[32m    Updating[0m crates.io index
+[1m[32m     Locking[0m 333 packages to latest Rust 1.88 compatible versions
+[1m[36m      Adding[0m base64 v0.22.1 [1m[33m(available: v0.23.0)[0m
+[1m[36m      Adding[0m crossterm v0.28.1 [1m[33m(available: v0.29.0)[0m
+[1m[36m      Adding[0m directories v5.0.1 [1m[33m(available: v6.0.0)[0m
+[1m[36m      Adding[0m notify v6.1.1 [1m[33m(available: v8.2.0)[0m
+[1m[36m      Adding[0m rand v0.8.7 [1m[33m(available: v0.10.2)[0m
+[1m[36m      Adding[0m ratatui v0.29.0 [1m[33m(available: v0.30.2)[0m
+[1m[36m      Adding[0m reqwest v0.12.28 [1m[33m(available: v0.13.4)[0m
+[1m[36m      Adding[0m rusqlite v0.32.1 [1m[33m(available: v0.40.1)[0m
+[1m[36m      Adding[0m thiserror v1.0.69 [1m[33m(available: v2.0.19)[0m
+[1m[36m      Adding[0m toml v0.8.23 [1m[33m(available: v1.1.3+spec-1.1.0)[0m
+[1m[36m      Adding[0m unicode-width v0.2.0 [1m[33m(available: v0.2.2)[0m
+[1m[36m      Adding[0m which v6.0.3 [1m[33m(available: v8.0.5)[0m
+
+$ cargo fmt
+$ git add -A
+$ git diff --cached --quiet
+$ git commit -m ci: finish strict validation and release gates
+[fix/trust-and-reliability-v3 2ff5b3c] ci: finish strict validation and release gates
+ 6 files changed, 65 insertions(+), 109 deletions(-)
+ delete mode 100644 .github/fix_replay_v3_context.py
+ delete mode 100644 .github/v3-replay-failure.txt
+ delete mode 100644 .github/workflows/replay-hardening-v3.yml
+
+$ cargo fmt --check
+$ cargo clippy --locked --all-targets --all-features -- -D clippy::correctness -D clippy::suspicious
+[1m[32m Downloading[0m crates ...
+[1m[32m  Downloaded[0m adler2 v2.0.1
+[1m[32m  Downloaded[0m anstyle-query v1.1.5
+[1m[32m  Downloaded[0m toml_write v0.1.2
+[1m[32m  Downloaded[0m toml_datetime v0.6.11
+[1m[32m  Downloaded[0m dirs-sys v0.4.1
+[1m[32m  Downloaded[0m tower-service v0.3.3
+[1m[32m  Downloaded[0m tower-layer v0.3.3
+[1m[32m  Downloaded[0m quick-error v2.0.1
+[1m[32m  Downloaded[0m lru v0.12.5
+[1m[32m  Downloaded[0m version_check v0.9.5
+[1m[32m  Downloaded[0m utf8parse v0.2.2
+[1m[32m  Downloaded[0m fallible-streaming-iterator v0.1.9
+[1m[32m  Downloaded[0m toml_edit v0.22.27
+[1m[32m  Downloaded[0m unicode-truncate v1.1.0
+[1m[32m  Downloaded[0m fdeflate v0.3.7
+[1m[32m  Downloaded[0m fallible-iterator v0.3.0
+[1m[32m  Downloaded[0m equivalent v1.0.2
+[1m[32m  Downloaded[0m zune-core v0.5.1
+[1m[32m  Downloaded[0m toml v0.8.23
+[1m[32m  Downloaded[0m ident_case v1.0.1
+[1m[32m  Downloaded[0m include_dir v0.7.4
+[1m[32m  Downloaded[0m gethostname v1.1.0
+[1m[32m  Downloaded[0m http-body v1.1.0
+[1m[32m  Downloaded[0m directories v5.0.1
+[1m[32m  Downloaded[0m either v1.17.0
+[1m[32m  Downloaded[0m option-ext v0.2.0
+[1m[32m  Downloaded[0m find-msvc-tools v0.1.9
+[1m[32m  Downloaded[0m hashlink v0.9.1
+[1m[32m  Downloaded[0m zerofrom v0.1.8
+[1m[32m  Downloaded[0m allocator-api2 v0.2.21
+[1m[32m  Downloaded[0m stable_deref_trait v1.2.1
+[1m[32m  Downloaded[0m futures-channel v0.3.33
+[1m[32m  Downloaded[0m filetime v0.2.29
+[1m[32m  Downloaded[0m compression-codecs v0.4.38
+[1m[32m  Downloaded[0m tokio-macros v2.7.1
+[1m[32m  Downloaded[0m percent-encoding v2.3.2
+[1m[32m  Downloaded[0m matchers v0.2.0
+[1m[32m  Downloaded[0m potential_utf v0.1.5
+[1m[32m  Downloaded[0m clap v4.6.4
+[1m[32m  Downloaded[0m thread_local v1.1.10
+[1m[32m  Downloaded[0m try-lock v0.2.5
+[1m[32m  Downloaded[0m httparse v1.10.1
+[1m[32m  Downloaded[0m half v2.7.1
+[1m[32m  Downloaded[0m rustc-hash v2.1.3
+[1m[32m  Downloaded[0m cc v1.4.0
+[1m[32m  Downloaded[0m base64 v0.22.1
+[1m[32m  Downloaded[0m serde_urlencoded v0.7.1
+[1m[32m  Downloaded[0m icu_properties v2.2.0
+[1m[32m  Downloaded[0m same-file v1.0.6
+[1m[32m  Downloaded[0m flate2 v1.1.9
+[1m[32m  Downloaded[0m subtle v2.6.1
+[1m[32m  Downloaded[0m tui-textarea v0.7.0
+[1m[32m  Downloaded[0m signal-hook-registry v1.4.8
+[1m[32m  Downloaded[0m once_cell v1.21.4
+[1m[32m  Downloaded[0m strum_macros v0.26.4
+[1m[32m  Downloaded[0m sharded-slab v0.1.7
+[1m[32m  Downloaded[0m slab v0.4.12
+[1m[32m  Downloaded[0m simd-adler32 v0.3.10
+[1m[32m  Downloaded[0m tinyvec v1.12.0
+[1m[32m  Downloaded[0m tiff v0.11.3
+[1m[32m  Downloaded[0m serde_json v1.0.151
+[1m[32m  Downloaded[0m log v0.4.33
+[1m[32m  Downloaded[0m rusqlite v0.32.1
+[1m[32m  Downloaded[0m reqwest v0.12.28
+[1m[32m  Downloaded[0m serde v1.0.229
+[1m[32m  Downloaded[0m mio v1.2.2
+[1m[32m  Downloaded[0m png v0.18.1
+[1m[32m  Downloaded[0m tokio-util v0.7.19
+[1m[32m  Downloaded[0m itertools v0.13.0
+[1m[32m  Downloaded[0m moxcms v0.8.1
+[1m[32m  Downloaded[0m winnow v0.7.15
+[1m[32m  Downloaded[0m rustls v0.23.42
+[1m[32m  Downloaded[0m syn v3.0.3
+[1m[32m  Downloaded[0m webpki-roots v1.0.9
+[1m[32m  Downloaded[0m unicode-width v0.2.0
+[1m[32m  Downloaded[0m zerocopy v0.8.55
+[1m[32m  Downloaded[0m unicode-width v0.1.14
+[1m[32m  Downloaded[0m syn v2.0.119
+[1m[32m  Downloaded[0m rustix v1.1.4
+[1m[32m  Downloaded[0m rustix v0.38.44
+[1m[32m  Downloaded[0m regex-syntax v0.8.11
+[1m[32m  Downloaded[0m tracing v0.1.44
+[1m[32m  Downloaded[0m tracing-subscriber v0.3.23
+[1m[32m  Downloaded[0m regex-automata v0.4.16
+[1m[32m  Downloaded[0m quinn-proto v0.11.16
+[1m[32m  Downloaded[0m vcpkg v0.2.15
+[1m[32m  Downloaded[0m x11rb v0.13.2
+[1m[32m  Downloaded[0m x11rb-protocol v0.13.2
+[1m[32m  Downloaded[0m ratatui v0.29.0
+[1m[32m  Downloaded[0m image v0.25.10
+[1m[32m  Downloaded[0m zerovec v0.11.6
+[1m[32m  Downloaded[0m memchr v2.8.3
+[1m[32m  Downloaded[0m zerocopy-derive v0.8.55
+[1m[32m  Downloaded[0m unicode-segmentation v1.13.3
+[1m[32m  Downloaded[0m tower-http v0.6.11
+[1m[32m  Downloaded[0m rustls-webpki v0.103.13
+[1m[32m  Downloaded[0m rand v0.10.2
+[1m[32m  Downloaded[0m mio v0.8.11
+[1m[32m  Downloaded[0m miniz_oxide v0.8.9
+[1m[32m  Downloaded[0m zune-jpeg v0.5.15
+[1m[32m  Downloaded[0m url v2.5.8
+[1m[32m  Downloaded[0m chrono v0.4.45
+[1m[32m  Downloaded[0m rand v0.8.7
+[1m[32m  Downloaded[0m quinn v0.11.11
+[1m[32m  Downloaded[0m uuid v1.24.0
+[1m[32m  Downloaded[0m pxfm v0.1.30
+[1m[32m  Downloaded[0m tokio v1.53.1
+[1m[32m  Downloaded[0m libc v0.2.189
+[1m[32m  Downloaded[0m nucleo-matcher v0.3.1
+[1m[32m  Downloaded[0m unicode-ident v1.0.24
+[1m[32m  Downloaded[0m tracing-core v0.1.36
+[1m[32m  Downloaded[0m tower v0.5.3
+[1m[32m  Downloaded[0m icu_properties_data v2.2.0
+[1m[32m  Downloaded[0m futures-util v0.3.33
+[1m[32m  Downloaded[0m rustls-pki-types v1.15.1
+[1m[32m  Downloaded[0m parking_lot_core v0.9.12
+[1m[32m  Downloaded[0m num-traits v0.2.19
+[1m[32m  Downloaded[0m zerotrie v0.2.4
+[1m[32m  Downloaded[0m hyper v1.11.0
+[1m[32m  Downloaded[0m hashbrown v0.17.1
+[1m[32m  Downloaded[0m hashbrown v0.15.5
+[1m[32m  Downloaded[0m clap_builder v4.6.2
+[1m[32m  Downloaded[0m async-compression v0.4.42
+[1m[32m  Downloaded[0m notify v6.1.1
+[1m[32m  Downloaded[0m idna v1.1.0
+[1m[32m  Downloaded[0m hashbrown v0.14.5
+[1m[32m  Downloaded[0m aho-corasick v1.1.4
+[1m[32m  Downloaded[0m rand_core v0.6.4
+[1m[32m  Downloaded[0m parking_lot v0.12.5
+[1m[32m  Downloaded[0m yoke v0.8.3
+[1m[32m  Downloaded[0m crossterm v0.28.1
+[1m[32m  Downloaded[0m indexmap v2.14.0
+[1m[32m  Downloaded[0m ryu v1.0.23
+[1m[32m  Downloaded[0m signal-hook v0.3.18
+[1m[32m  Downloaded[0m thiserror v2.0.19
+[1m[32m  Downloaded[0m static_assertions v1.1.0
+[1m[32m  Downloaded[0m ring v0.17.14
+[1m[32m  Downloaded[0m http v1.4.2
+[1m[32m  Downloaded[0m crossbeam-channel v0.5.16
+[1m[32m  Downloaded[0m writeable v0.6.3
+[1m[32m  Downloaded[0m tracing-attributes v0.1.31
+[1m[32m  Downloaded[0m weezl v0.1.12
+[1m[32m  Downloaded[0m hyper-util v0.1.20
+[1m[32m  Downloaded[0m tracing-log v0.2.0
+[1m[32m  Downloaded[0m icu_collections v2.2.0
+[1m[32m  Downloaded[0m compact_str v0.8.2
+[1m[32m  Downloaded[0m scopeguard v1.2.0
+[1m[32m  Downloaded[0m strum v0.26.3
+[1m[32m  Downloaded[0m rustversion v1.0.23
+[1m[32m  Downloaded[0m smallvec v1.15.2
+[1m[32m  Downloaded[0m serde_derive v1.0.229
+[1m[32m  Downloaded[0m serde_core v1.0.229
+[1m[32m  Downloaded[0m quote v1.0.47
+[1m[32m  Downloaded[0m pin-project-lite v0.2.17
+[1m[32m  Downloaded[0m ipnet v2.12.0
+[1m[32m  Downloaded[0m walkdir v2.5.0
+[1m[32m  Downloaded[0m darling_core v0.23.0
+[1m[32m  Downloaded[0m signal-hook-mio v0.2.5
+[1m[32m  Downloaded[0m shlex v2.0.1
+[1m[32m  Downloaded[0m tinystr v0.8.3
+[1m[32m  Downloaded[0m thiserror-impl v2.0.19
+[1m[32m  Downloaded[0m thiserror-impl v1.0.69
+[1m[32m  Downloaded[0m strsim v0.11.1
+[1m[32m  Downloaded[0m socket2 v0.6.5
+[1m[32m  Downloaded[0m rand_core v0.10.1
+[1m[32m  Downloaded[0m quinn-udp v0.5.15
+[1m[32m  Downloaded[0m ppv-lite86 v0.2.21
+[1m[32m  Downloaded[0m paste v1.0.15
+[1m[32m  Downloaded[0m nu-ansi-term v0.50.3
+[1m[32m  Downloaded[0m lock_api v0.4.14
+[1m[32m  Downloaded[0m zmij v1.0.23
+[1m[32m  Downloaded[0m linux-raw-sys v0.4.15
+[1m[32m  Downloaded[0m zerovec-derive v0.11.3
+[1m[32m  Downloaded[0m icu_normalizer_data v2.2.0
+[1m[32m  Downloaded[0m icu_normalizer v2.2.0
+[1m[32m  Downloaded[0m icu_locale_core v2.2.0
+[1m[32m  Downloaded[0m arboard v3.6.1
+[1m[32m  Downloaded[0m tinyvec_macros v0.1.1
+[1m[32m  Downloaded[0m tokio-rustls v0.26.4
+[1m[32m  Downloaded[0m synstructure v0.13.2
+[1m[32m  Downloaded[0m proc-macro2 v1.0.107
+[1m[32m  Downloaded[0m pkg-config v0.3.33
+[1m[32m  Downloaded[0m litemap v0.8.2
+[1m[32m  Downloaded[0m which v6.0.3
+[1m[32m  Downloaded[0m getrandom v0.4.3
+[1m[32m  Downloaded[0m futures v0.3.33
+[1m[32m  Downloaded[0m bytes v1.12.1
+[1m[32m  Downloaded[0m sync_wrapper v1.0.2
+[1m[32m  Downloaded[0m serde_spanned v0.6.9
+[1m[32m  Downloaded[0m thiserror v1.0.69
+[1m[32m  Downloaded[0m shell-words v1.1.1
+[1m[32m  Downloaded[0m lru-slab v0.1.2
+[1m[32m  Downloaded[0m itoa v1.0.18
+[1m[32m  Downloaded[0m is_terminal_polyfill v1.70.2
+[1m[32m  Downloaded[0m yoke-derive v0.8.2
+[1m[32m  Downloaded[0m utf8_iter v1.0.4
+[1m[32m  Downloaded[0m icu_provider v2.2.0
+[1m[32m  Downloaded[0m bytemuck v1.25.2
+[1m[32m  Downloaded[0m crossbeam-utils v0.8.22
+[1m[32m  Downloaded[0m chacha20 v0.10.1
+[1m[32m  Downloaded[0m bitflags v2.13.1
+[1m[32m  Downloaded[0m rtoolbox v0.0.5
+[1m[32m  Downloaded[0m rpassword v7.5.4
+[1m[32m  Downloaded[0m rand_pcg v0.10.2
+[1m[32m  Downloaded[0m rand_chacha v0.3.1
+[1m[32m  Downloaded[0m lazy_static v1.5.0
+[1m[32m  Downloaded[0m want v0.3.1
+[1m[32m  Downloaded[0m untrusted v0.9.0
+[1m[32m  Downloaded[0m iana-time-zone v0.1.65
+[1m[32m  Downloaded[0m getrandom v0.2.17
+[1m[32m  Downloaded[0m clap_derive v4.6.4
+[1m[32m  Downloaded[0m autocfg v1.5.1
+[1m[32m  Downloaded[0m zeroize v1.9.0
+[1m[32m  Downloaded[0m inotify v0.9.6
+[1m[32m  Downloaded[0m linux-raw-sys v0.12.1
+[1m[32m  Downloaded[0m indoc v2.0.7
+[1m[32m  Downloaded[0m hyper-rustls v0.27.9
+[1m[32m  Downloaded[0m http-body-util v0.1.4
+[1m[32m  Downloaded[0m futures-executor v0.3.33
+[1m[32m  Downloaded[0m futures-core v0.3.33
+[1m[32m  Downloaded[0m foldhash v0.1.5
+[1m[32m  Downloaded[0m errno v0.3.14
+[1m[32m  Downloaded[0m darling v0.23.0
+[1m[32m  Downloaded[0m crc32fast v1.5.0
+[1m[32m  Downloaded[0m cassowary v0.3.0
+[1m[32m  Downloaded[0m instability v0.3.12
+[1m[32m  Downloaded[0m zerofrom-derive v0.1.7
+[1m[32m  Downloaded[0m fax v0.2.7
+[1m[32m  Downloaded[0m bitflags v1.3.2
+[1m[32m  Downloaded[0m atomic-waker v1.1.2
+[1m[32m  Downloaded[0m futures-macro v0.3.33
+[1m[32m  Downloaded[0m futures-task v0.3.33
+[1m[32m  Downloaded[0m futures-sink v0.3.33
+[1m[32m  Downloaded[0m include_dir_macros v0.7.4
+[1m[32m  Downloaded[0m home v0.5.12
+[1m[32m  Downloaded[0m heck v0.5.0
+[1m[32m  Downloaded[0m form_urlencoded v1.2.2
+[1m[32m  Downloaded[0m darling_macro v0.23.0
+[1m[32m  Downloaded[0m cfg_aliases v0.2.2
+[1m[32m  Downloaded[0m anyhow v1.0.104
+[1m[32m  Downloaded[0m ahash v0.8.12
+[1m[32m  Downloaded[0m displaydoc v0.2.6
+[1m[32m  Downloaded[0m colorchoice v1.0.5
+[1m[32m  Downloaded[0m byteorder-lite v0.1.0
+[1m[32m  Downloaded[0m futures-io v0.3.33
+[1m[32m  Downloaded[0m compression-core v0.4.32
+[1m[32m  Downloaded[0m castaway v0.2.4
+[1m[32m  Downloaded[0m anstream v1.0.0
+[1m[32m  Downloaded[0m anstyle-parse v1.0.0
+[1m[32m  Downloaded[0m anstyle v1.0.14
+[1m[32m  Downloaded[0m cpufeatures v0.3.0
+[1m[32m  Downloaded[0m cfg-if v1.0.4
+[1m[32m  Downloaded[0m inotify-sys v0.1.8
+[1m[32m  Downloaded[0m idna_adapter v1.2.2
+[1m[32m  Downloaded[0m clap_lex v1.1.0
+[1m[32m  Downloaded[0m libsqlite3-sys v0.30.1
+[1m[32m   Compiling[0m proc-macro2 v1.0.107
+[1m[32m   Compiling[0m unicode-ident v1.0.24
+[1m[32m   Compiling[0m quote v1.0.47
+[1m[32m   Compiling[0m libc v0.2.189
+[1m[32m    Checking[0m cfg-if v1.0.4
+[1m[32m    Checking[0m smallvec v1.15.2
+[1m[32m    Checking[0m log v0.4.33
+[1m[32m   Compiling[0m parking_lot_core v0.9.12
+[1m[32m    Checking[0m pin-project-lite v0.2.17
+[1m[32m    Checking[0m scopeguard v1.2.0
+[1m[32m    Checking[0m futures-core v0.3.33
+[1m[32m    Checking[0m lock_api v0.4.14
+[1m[32m    Checking[0m stable_deref_trait v1.2.1
+[1m[32m    Checking[0m bitflags v2.13.1
+[1m[32m   Compiling[0m shlex v2.0.1
+[1m[32m   Compiling[0m find-msvc-tools v0.1.9
+[1m[32m   Compiling[0m cc v1.4.0
+[1m[32m   Compiling[0m syn v2.0.119
+[1m[32m    Checking[0m bytes v1.12.1
+[1m[32m    Checking[0m errno v0.3.14
+[1m[32m    Checking[0m signal-hook-registry v1.4.8
+[1m[32m    Checking[0m mio v1.2.2
+[1m[32m    Checking[0m parking_lot v0.12.5
+[1m[32m    Checking[0m itoa v1.0.18
+[1m[32m    Checking[0m once_cell v1.21.4
+[1m[32m   Compiling[0m serde_core v1.0.229
+[1m[32m    Checking[0m memchr v2.8.3
+[1m[32m   Compiling[0m syn v3.0.3
+[1m[32m    Checking[0m futures-sink v0.3.33
+[1m[32m    Checking[0m socket2 v0.6.5
+[1m[32m   Compiling[0m crc32fast v1.5.0
+[1m[32m    Checking[0m simd-adler32 v0.3.10
+[1m[32m    Checking[0m futures-channel v0.3.33
+[1m[32m    Checking[0m getrandom v0.2.17
+[1m[32m   Compiling[0m serde v1.0.229
+[1m[32m    Checking[0m litemap v0.8.2
+[1m[32m   Compiling[0m zerocopy v0.8.55
+[1m[32m    Checking[0m adler2 v2.0.1
+[1m[32m    Checking[0m writeable v0.6.3
+[1m[32m    Checking[0m miniz_oxide v0.8.9
+[1m[32m   Compiling[0m ring v0.17.14
+[1m[32m   Compiling[0m rustversion v1.0.23
+[1m[32m    Checking[0m futures-task v0.3.33
+[1m[32m    Checking[0m percent-encoding v2.3.2
+[1m[32m   Compiling[0m synstructure v0.13.2
+[1m[32m    Checking[0m utf8_iter v1.0.4
+[1m[32m   Compiling[0m icu_normalizer_data v2.2.0
+[1m[32m    Checking[0m slab v0.4.12
+[1m[32m    Checking[0m futures-io v0.3.33
+[1m[32m   Compiling[0m icu_properties_data v2.2.0
+[1m[32m    Checking[0m flate2 v1.1.9
+[1m[32m   Compiling[0m serde_derive v1.0.229
+[1m[32m   Compiling[0m zerofrom-derive v0.1.7
+[1m[32m    Checking[0m zerofrom v0.1.8
+[1m[32m   Compiling[0m yoke-derive v0.8.2
+[1m[32m   Compiling[0m zerovec-derive v0.11.3
+[1m[32m   Compiling[0m displaydoc v0.2.6
+[1m[32m    Checking[0m yoke v0.8.3
+[1m[32m   Compiling[0m tokio-macros v2.7.1
+[1m[32m   Compiling[0m futures-macro v0.3.33
+[1m[32m    Checking[0m zerovec v0.11.6
+[1m[32m    Checking[0m zerotrie v0.2.4
+[1m[32m    Checking[0m tinystr v0.8.3
+[1m[32m    Checking[0m icu_locale_core v2.2.0
+[1m[32m    Checking[0m potential_utf v0.1.5
+[1m[32m    Checking[0m icu_collections v2.2.0
+[1m[32m    Checking[0m tokio v1.53.1
+[1m[32m    Checking[0m futures-util v0.3.33
+[1m[32m    Checking[0m icu_provider v2.2.0
+[1m[32m    Checking[0m http v1.4.2
+[1m[32m   Compiling[0m autocfg v1.5.1
+[1m[32m    Checking[0m zeroize v1.9.0
+[1m[32m    Checking[0m equivalent v1.0.2
+[1m[32m    Checking[0m rustls-pki-types v1.15.1
+[1m[32m    Checking[0m http-body v1.1.0
+[1m[32m   Compiling[0m num-traits v0.2.19
+[1m[32m    Checking[0m tracing-core v0.1.36
+[1m[32m    Checking[0m untrusted v0.9.0
+[1m[32m   Compiling[0m version_check v0.9.5
+[1m[32m   Compiling[0m httparse v1.10.1
+[1m[32m   Compiling[0m ident_case v1.0.1
+[1m[32m   Compiling[0m heck v0.5.0
+[1m[32m   Compiling[0m signal-hook v0.3.18
+[1m[32m   Compiling[0m strsim v0.11.1
+[1m[32m   Compiling[0m rustix v0.38.44
+[1m[32m   Compiling[0m darling_core v0.23.0
+[1m[32m   Compiling[0m ahash v0.8.12
+[1m[32m    Checking[0m icu_normalizer v2.2.0
+[1m[32m    Checking[0m icu_properties v2.2.0
+[1m[32m   Compiling[0m tracing-attributes v0.1.31
+[1m[32m    Checking[0m linux-raw-sys v0.4.15
+[1m[32m    Checking[0m either v1.17.0
+[1m[32m   Compiling[0m rustix v1.1.4
+[1m[32m    Checking[0m try-lock v0.2.5
+[1m[32m    Checking[0m ryu v1.0.23
+[1m[32m    Checking[0m tower-service v0.3.3
+[1m[32m   Compiling[0m rustls v0.23.42
+[1m[32m    Checking[0m want v0.3.1
+[1m[32m    Checking[0m idna_adapter v1.2.2
+[1m[32m    Checking[0m rustls-webpki v0.103.13
+[1m[32m    Checking[0m tracing v0.1.44
+[1m[32m   Compiling[0m darling_macro v0.23.0
+[1m[32m    Checking[0m form_urlencoded v1.2.2
+[1m[32m   Compiling[0m crossbeam-utils v0.8.22
+[1m[32m    Checking[0m allocator-api2 v0.2.21
+[1m[32m   Compiling[0m vcpkg v0.2.15
+[1m[32m   Compiling[0m inotify-sys v0.1.8
+[1m[32m    Checking[0m linux-raw-sys v0.12.1
+[1m[32m    Checking[0m subtle v2.6.1
+[1m[32m   Compiling[0m pkg-config v0.3.33
+[1m[32m   Compiling[0m zmij v1.0.23
+[1m[32m    Checking[0m utf8parse v0.2.2
+[1m[32m   Compiling[0m instability v0.3.12
+[1m[32m    Checking[0m compression-core v0.4.32
+[1m[32m   Compiling[0m paste v1.0.15
+[1m[32m    Checking[0m foldhash v0.1.5
+[1m[32m    Checking[0m atomic-waker v1.1.2
+[1m[32m    Checking[0m unicode-segmentation v1.13.3
+[1m[32m    Checking[0m hashbrown v0.15.5
+[1m[32m    Checking[0m hyper v1.11.0
+[1m[32m   Compiling[0m libsqlite3-sys v0.30.1
+[1m[32m    Checking[0m compression-codecs v0.4.38
+[1m[32m    Checking[0m anstyle-parse v1.0.0
+[1m[32m   Compiling[0m darling v0.23.0
+[1m[32m    Checking[0m signal-hook-mio v0.2.5
+[1m[32m    Checking[0m idna v1.1.0
+[1m[32m    Checking[0m itertools v0.13.0
+[1m[32m   Compiling[0m strum_macros v0.26.4
+[1m[32m    Checking[0m castaway v0.2.4
+[1m[32m    Checking[0m fdeflate v0.3.7
+[1m[32m    Checking[0m sync_wrapper v1.0.2
+[1m[32m   Compiling[0m serde_json v1.0.151
+[1m[32m    Checking[0m hashbrown v0.17.1
+[1m[32m    Checking[0m anstyle v1.0.14
+[1m[32m    Checking[0m base64 v0.22.1
+[1m[32m    Checking[0m regex-syntax v0.8.11
+[1m[32m    Checking[0m pxfm v0.1.30
+[1m[32m    Checking[0m static_assertions v1.1.0
+[1m[32m    Checking[0m ipnet v2.12.0
+[1m[32m   Compiling[0m getrandom v0.4.3
+[1m[32m    Checking[0m is_terminal_polyfill v1.70.2
+[1m[32m    Checking[0m tower-layer v0.3.3
+[1m[32m   Compiling[0m indoc v2.0.7
+[1m[32m    Checking[0m anstyle-query v1.1.5
+[1m[32m    Checking[0m colorchoice v1.0.5
+[1m[32m    Checking[0m unicode-width v0.1.14
+[1m[32m    Checking[0m unicode-truncate v1.1.0
+[1m[32m    Checking[0m anstream v1.0.0
+[1m[32m    Checking[0m regex-automata v0.4.16
+[1m[32m    Checking[0m tower v0.5.3
+[1m[32m    Checking[0m hyper-util v0.1.20
+[1m[32m    Checking[0m compact_str v0.8.2
+[1m[32m    Checking[0m tokio-rustls v0.26.4
+[1m[32m    Checking[0m moxcms v0.8.1
+[1m[32m    Checking[0m strum v0.26.3
+[1m[32m    Checking[0m indexmap v2.14.0
+[1m[32m    Checking[0m gethostname v1.1.0
+[1m[32m    Checking[0m png v0.18.1
+[1m[32m    Checking[0m url v2.5.8
+[1m[32m    Checking[0m hashbrown v0.14.5
+[1m[32m    Checking[0m crossterm v0.28.1
+[1m[32m    Checking[0m async-compression v0.4.42
+[1m[32m    Checking[0m lru v0.12.5
+[1m[32m    Checking[0m tokio-util v0.7.19
+[1m[32m    Checking[0m webpki-roots v1.0.9
+[1m[32m    Checking[0m http-body-util v0.1.4
+[1m[32m    Checking[0m toml_datetime v0.6.11
+[1m[32m    Checking[0m serde_spanned v0.6.9
+[1m[32m    Checking[0m ppv-lite86 v0.2.21
+[1m[32m    Checking[0m rand_core v0.6.4
+[1m[32m   Compiling[0m anyhow v1.0.104
+[1m[32m    Checking[0m cassowary v0.3.0
+[1m[32m    Checking[0m option-ext v0.2.0
+[1m[32m   Compiling[0m thiserror v1.0.69
+[1m[32m    Checking[0m clap_lex v1.1.0
+[1m[32m    Checking[0m unicode-width v0.2.0
+[1m[32m    Checking[0m same-file v1.0.6
+[1m[32m    Checking[0m bitflags v1.3.2
+[1m[32m    Checking[0m bytemuck v1.25.2
+[1m[32m    Checking[0m winnow v0.7.15
+[1m[32m    Checking[0m x11rb-protocol v0.13.2
+[1m[32m    Checking[0m toml_write v0.1.2
+[1m[32m    Checking[0m lazy_static v1.5.0
+[1m[32m    Checking[0m byteorder-lite v0.1.0
+[1m[32m    Checking[0m image v0.25.10
+[1m[32m    Checking[0m toml_edit v0.22.27
+[1m[32m    Checking[0m sharded-slab v0.1.7
+[1m[32m    Checking[0m clap_builder v4.6.2
+[1m[32m    Checking[0m inotify v0.9.6
+[1m[32m    Checking[0m x11rb v0.13.2
+[1m[32m    Checking[0m walkdir v2.5.0
+[1m[32m    Checking[0m ratatui v0.29.0
+[1m[32m    Checking[0m dirs-sys v0.4.1
+[1m[32m    Checking[0m rand_chacha v0.3.1
+[1m[32m    Checking[0m tower-http v0.6.11
+[1m[32m    Checking[0m hyper-rustls v0.27.9
+[1m[32m    Checking[0m crossbeam-channel v0.5.16
+[1m[32m    Checking[0m hashlink v0.9.1
+[1m[32m    Checking[0m matchers v0.2.0
+[1m[32m    Checking[0m serde_urlencoded v0.7.1
+[1m[32m    Checking[0m futures-executor v0.3.33
+[1m[32m   Compiling[0m clap_derive v4.6.4
+[1m[32m    Checking[0m tracing-log v0.2.0
+[1m[32m   Compiling[0m thiserror-impl v1.0.69
+[1m[32m    Checking[0m rtoolbox v0.0.5
+[1m[32m    Checking[0m filetime v0.2.29
+[1m[32m    Checking[0m mio v0.8.11
+[1m[32m   Compiling[0m include_dir_macros v0.7.4
+[1m[32m    Checking[0m thread_local v1.1.10
+[1m[32m    Checking[0m iana-time-zone v0.1.65
+[1m[32m    Checking[0m nu-ansi-term v0.50.3
+[1m[32m    Checking[0m fallible-streaming-iterator v0.1.9
+[1m[32m    Checking[0m fallible-iterator v0.3.0
+[1m[32m    Checking[0m home v0.5.12
+[1m[32m    Checking[0m which v6.0.3
+[1m[32m    Checking[0m tracing-subscriber v0.3.23
+[1m[32m    Checking[0m chrono v0.4.45
+[1m[32m    Checking[0m clap v4.6.4
+[1m[32m    Checking[0m include_dir v0.7.4
+[1m[32m    Checking[0m notify v6.1.1
+[1m[32m    Checking[0m rpassword v7.5.4
+[1m[32m    Checking[0m reqwest v0.12.28
+[1m[32m    Checking[0m futures v0.3.33
+[1m[32m    Checking[0m uuid v1.24.0
+[1m[32m    Checking[0m tui-textarea v0.7.0
+[1m[32m    Checking[0m rusqlite v0.32.1
+[1m[32m    Checking[0m rand v0.8.7
+[1m[32m    Checking[0m directories v5.0.1
+[1m[32m    Checking[0m arboard v3.6.1
+[1m[32m    Checking[0m toml v0.8.23
+[1m[32m    Checking[0m nucleo-matcher v0.3.1
+[1m[32m    Checking[0m shell-words v1.1.1
+[1m[32m    Checking[0m chronosphere v0.2.1 (/home/runner/work/chronosphere/chronosphere)
+[0m[1m[38;5;9merror[E0428][0m[0m[1m: the name `deploy_session_uses_protocol_specific_port_flags` is defined multiple times[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/exec/ssh.rs:393:5[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m372[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    fn deploy_session_uses_protocol_specific_port_flags() {[0m
+[0m    [0m[0m[1m[38;5;12m|[0m[0m     [0m[0m[1m[38;5;12m-----------------------------------------------------[0m[0m [0m[0m[1m[38;5;12mprevious definition of the value `deploy_session_uses_protocol_specific_port_flags` here[0m
+[0m[1m[38;5;12m...[0m
+[0m[1m[38;5;12m393[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    fn deploy_session_uses_protocol_specific_port_flags() {[0m
+[0m    [0m[0m[1m[38;5;12m|[0m[0m     [0m[0m[1m[38;5;9m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m[0m [0m[0m[1m[38;5;9m`deploy_session_uses_protocol_specific_port_flags` redefined here[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m    [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: `deploy_session_uses_protocol_specific_port_flags` must be defined only once in the value namespace of this module[0m
+
+[0m[1m[38;5;9merror[E0425][0m[0m[1m: cannot find value `command` in this scope[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/exec/ssh.rs:341:9[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m341[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m        command[0m
+[0m    [0m[0m[1m[38;5;12m|[0m[0m         [0m[0m[1m[38;5;9m^^^^^^^[0m[0m [0m[0m[1m[38;5;9mnot found in this scope[0m
+
+[0m[1m[38;5;9merror[E0425][0m[0m[1m: cannot find value `ctx` in this scope[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/mcp/tools.rs:684:88[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m684[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m        let tmpl = cmd.applicable_template(&|w| crate::render::condition::evaluate(w, &ctx));[0m
+[0m    [0m[0m[1m[38;5;12m|[0m[0m                                                                                        [0m[0m[1m[38;5;9m^^^[0m[0m [0m[0m[1m[38;5;9mnot found in this scope[0m
+
+[0m[1m[38;5;9merror[E0425][0m[0m[1m: cannot find value `ctx` in this scope[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/mcp/tools.rs:685:46[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m685[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m        let rendered = render::render(tmpl, &ctx).map_err(|e| anyhow!("{}", e))?;[0m
+[0m    [0m[0m[1m[38;5;12m|[0m[0m                                              [0m[0m[1m[38;5;9m^^^[0m[0m [0m[0m[1m[38;5;9mnot found in this scope[0m
+
+[0m[1m[38;5;9merror[E0425][0m[0m[1m: cannot find value `ctx` in this scope[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/mcp/tools.rs:686:77[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m686[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m        let redacted = crate::security::redact_command(&rendered.resolved, &ctx);[0m
+[0m    [0m[0m[1m[38;5;12m|[0m[0m                                                                             [0m[0m[1m[38;5;9m^^^[0m[0m [0m[0m[1m[38;5;9mnot found in this scope[0m
+
+[0m[1m[38;5;9merror[E0425][0m[0m[1m: cannot find value `engagement` in this scope[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/mcp/tools.rs:688:46[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m688[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m        let log_path = Engagement::jobs_dir(&engagement.dir).join(format!("{}.log", job_id));[0m
+[0m    [0m[0m[1m[38;5;12m|[0m[0m                                              [0m[0m[1m[38;5;9m^^^^^^^^^^[0m[0m [0m[0m[1m[38;5;9mnot found in this scope[0m
+
+[0m[1m[38;5;9merror[E0425][0m[0m[1m: cannot find value `engagement` in this scope[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/mcp/tools.rs:694:13[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m694[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m            engagement.dir.clone(),[0m
+[0m    [0m[0m[1m[38;5;12m|[0m[0m             [0m[0m[1m[38;5;9m^^^^^^^^^^[0m[0m [0m[0m[1m[38;5;9mnot found in this scope[0m
+
+[0m[1m[38;5;9merror[E0425][0m[0m[1m: cannot find value `command` in this scope[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/mcp/tools.rs:698:13[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m698[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m            command.id.clone(),[0m
+[0m    [0m[0m[1m[38;5;12m|[0m[0m             [0m[0m[1m[38;5;9m^^^^^^^[0m[0m [0m[0m[1m[38;5;9mnot found in this scope[0m
+
+[0m[1m[38;5;9merror[E0425][0m[0m[1m: cannot find value `command` in this scope[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/mcp/tools.rs:699:13[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m699[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m            command.title.clone(),[0m
+[0m    [0m[0m[1m[38;5;12m|[0m[0m             [0m[0m[1m[38;5;9m^^^^^^^[0m[0m [0m[0m[1m[38;5;9mnot found in this scope[0m
+
+[0m[1m[38;5;9merror[E0425][0m[0m[1m: cannot find value `ctx` in this scope[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/mcp/tools.rs:684:88[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m684[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m        let tmpl = cmd.applicable_template(&|w| crate::render::condition::evaluate(w, &ctx));[0m
+[0m    [0m[0m[1m[38;5;12m|[0m[0m                                                                                        [0m[0m[1m[38;5;9m^^^[0m[0m [0m[0m[1m[38;5;9mnot found in this scope[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;10mnote[0m[0m: function `crate::render::tests::ctx` exists but is inaccessible[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/render/mod.rs:123:5[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m123[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    fn ctx() -> RenderContext {[0m
+[0m    [0m[0m[1m[38;5;12m|[0m[0m     [0m[0m[1m[38;5;10m^^^^^^^^^^^^^^^^^^^^^^^^^[0m[0m [0m[0m[1m[38;5;10mnot accessible[0m
+
+[0m[1m[38;5;9merror[E0425][0m[0m[1m: cannot find value `redacted` in this scope[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/mcp/tools.rs:704:38[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m704[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m        return Ok(json!({"resolved": redacted, "dry_run": true}));[0m
+[0m    [0m[0m[1m[38;5;12m|[0m[0m                                      [0m[0m[1m[38;5;9m^^^^^^^^[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;14mhelp[0m[0m: the binding `redacted` is available in a different scope in the same function[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/mcp/tools.rs:686:13[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m686[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m        let redacted = crate::security::redact_command(&rendered.resolved, &ctx);[0m
+[0m    [0m[0m[1m[38;5;12m|[0m[0m             [0m[0m[1m[38;5;14m^^^^^^^^[0m
+
+[0m[1m[38;5;9merror[E0425][0m[0m[1m: cannot find value `ctx` in this scope[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/mcp/tools.rs:685:46[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m685[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m        let rendered = render::render(tmpl, &ctx).map_err(|e| anyhow!("{}", e))?;[0m
+[0m    [0m[0m[1m[38;5;12m|[0m[0m                                              [0m[0m[1m[38;5;9m^^^[0m[0m [0m[0m[1m[38;5;9mnot found in this scope[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;10mnote[0m[0m: function `crate::render::tests::ctx` exists but is inaccessible[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/render/mod.rs:123:5[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m123[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    fn ctx() -> RenderContext {[0m
+[0m    [0m[0m[1m[38;5;12m|[0m[0m     [0m[0m[1m[38;5;10m^^^^^^^^^^^^^^^^^^^^^^^^^[0m[0m [0m[0m[1m[38;5;10mnot accessible[0m
+
+[0m[1m[38;5;9merror[E0425][0m[0m[1m: cannot find value `engagement_dir` in this scope[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/mcp/tools.rs:707:51[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m707[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    std::fs::create_dir_all(Engagement::jobs_dir(&engagement_dir))?;[0m
+[0m    [0m[0m[1m[38;5;12m|[0m[0m                                                   [0m[0m[1m[38;5;9m^^^^^^^^^^^^^^[0m[0m [0m[0m[1m[38;5;9mnot found in this scope[0m
+
+[0m[1m[38;5;9merror[E0425][0m[0m[1m: cannot find value `ctx` in this scope[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/mcp/tools.rs:686:77[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m686[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m        let redacted = crate::security::redact_command(&rendered.resolved, &ctx);[0m
+[0m    [0m[0m[1m[38;5;12m|[0m[0m                                                                             [0m[0m[1m[38;5;9m^^^[0m[0m [0m[0m[1m[38;5;9mnot found in this scope[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;10mnote[0m[0m: function `crate::render::tests::ctx` exists but is inaccessible[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/render/mod.rs:123:5[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m123[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    fn ctx() -> RenderContext {[0m
+[0m    [0m[0m[1m[38;5;12m|[0m[0m     [0m[0m[1m[38;5;10m^^^^^^^^^^^^^^^^^^^^^^^^^[0m[0m [0m[0m[1m[38;5;10mnot accessible[0m
+
+[0m[1m[38;5;9merror[E0425][0m[0m[1m: cannot find value `redacted` in this scope[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/mcp/tools.rs:735:23[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m735[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m            resolved: redacted.clone(),[0m
+[0m    [0m[0m[1m[38;5;12m|[0m[0m                       [0m[0m[1m[38;5;9m^^^^^^^^[0m[0m [0m[0m[1m[38;5;9mnot found in this scope[0m
+
+[0m[1m[38;5;9merror[E0425][0m[0m[1m: cannot find value `engagement` in this scope[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/mcp/tools.rs:748:9[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m748[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m        engagement.history.append(&record)?;[0m
+[0m    [0m[0m[1m[38;5;12m|[0m[0m         [0m[0m[1m[38;5;9m^^^^^^^^^^[0m[0m [0m[0m[1m[38;5;9mnot found in this scope[0m
+
+[0m[1m[38;5;9merror[E0425][0m[0m[1m: cannot find value `record` in this scope[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/mcp/tools.rs:748:36[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m748[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m        engagement.history.append(&record)?;[0m
+[0m    [0m[0m[1m[38;5;12m|[0m[0m                                    [0m[0m[1m[38;5;9m^^^^^^[0m[0m [0m[0m[1m[38;5;9mnot found in this scope[0m
+
+[0m[1m[38;5;9merror[E0425][0m[0m[1m: cannot find value `redacted` in this scope[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/mcp/tools.rs:810:21[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m810[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m        "resolved": redacted,[0m
+[0m    [0m[0m[1m[38;5;12m|[0m[0m                     [0m[0m[1m[38;5;9m^^^^^^^^[0m[0m [0m[0m[1m[38;5;9mnot found in this scope[0m
+
+[0m[1m[38;5;9merror[E0425][0m[0m[1m: cannot find value `log_path` in this scope[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/mcp/tools.rs:957:13[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m957[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m            log_path,[0m
+[0m    [0m[0m[1m[38;5;12m|[0m[0m             [0m[0m[1m[38;5;9m^^^^^^^^[0m[0m [0m[0m[1m[38;5;9mnot found in this scope[0m
+
+[0m[1m[38;5;9merror[E0425][0m[0m[1m: cannot find value `engagement` in this scope[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/mcp/tools.rs:959:18[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m959[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m                &engagement.profiles,[0m
+[0m    [0m[0m[1m[38;5;12m|[0m[0m                  [0m[0m[1m[38;5;9m^^^^^^^^^^[0m[0m [0m[0m[1m[38;5;9mnot found in this scope[0m
+
+[0m[1m[38;5;9merror[E0425][0m[0m[1m: cannot find value `engagement` in this scope[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/mcp/tools.rs:960:18[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m960[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m                &engagement.aps,[0m
+[0m    [0m[0m[1m[38;5;12m|[0m[0m                  [0m[0m[1m[38;5;9m^^^^^^^^^^[0m[0m [0m[0m[1m[38;5;9mnot found in this scope[0m
+
+[0m[1m[38;5;9merror[E0425][0m[0m[1m: cannot find value `engagement` in this scope[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/mcp/tools.rs:961:18[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m961[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m                &engagement.pivots,[0m
+[0m    [0m[0m[1m[38;5;12m|[0m[0m                  [0m[0m[1m[38;5;9m^^^^^^^^^^[0m[0m [0m[0m[1m[38;5;9mnot found in this scope[0m
+
+[0m[1m[38;5;9merror[E0425][0m[0m[1m: cannot find value `engagement` in this scope[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/mcp/tools.rs:962:18[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m962[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m                &engagement.variables,[0m
+[0m    [0m[0m[1m[38;5;12m|[0m[0m                  [0m[0m[1m[38;5;9m^^^^^^^^^^[0m[0m [0m[0m[1m[38;5;9mnot found in this scope[0m
+
+[0m[1m[38;5;9merror[E0425][0m[0m[1m: cannot find value `secrets` in this scope[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/mcp/tools.rs:967:55[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m967[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    let body = crate::security::redact_values(&body, &secrets);[0m
+[0m    [0m[0m[1m[38;5;12m|[0m[0m                                                       [0m[0m[1m[38;5;9m^^^^^^^[0m[0m [0m[0m[1m[38;5;9mnot found in this scope[0m
+
+[0m[1m[38;5;9merror[E0599][0m[0m[1m: no method named `render_ctx` found for struct `std::sync::Arc<tokio::sync::Mutex<mcp::tools::State>>` in the current scope[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/mcp/tools.rs:678:29[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m678[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m        let context = state.render_ctx([0m
+[0m    [0m[0m[1m[38;5;12m|[0m[0m                       [0m[0m[1m[38;5;12m------[0m[0m[1m[38;5;9m^^^^^^^^^^[0m[0m [0m[0m[1m[38;5;9mmethod not found in `Arc<Mutex<State>>`[0m
+
+[0m[1m[33mwarning[0m[0m[1m: unused variable: `state`[0m
+[0m    [0m[0m[1m[38;5;12m--> [0m[0msrc/mcp/tools.rs:1016:37[0m
+[0m     [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m1016[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0masync fn tool_kill_job(args: Value, state: Arc<Mutex<State>>) -> Result<Value> {[0m
+[0m     [0m[0m[1m[38;5;12m|[0m[0m                                     [0m[0m[1m[33m^^^^^[0m[0m [0m[0m[1m[33mhelp: if this is intentional, prefix it with an underscore: `_state`[0m
+[0m     [0m[0m[1m[38;5;12m|[0m
+[0m     [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: `#[warn(unused_variables)]` on by default[0m
+
+[0m[1m[38;5;9merror[E0599][0m[0m[1m: no method named `flush` found for struct `std::io::Stderr` in the current scope[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/deploy.rs:234:18[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m234[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    io::stderr().flush().ok();[0m
+[0m    [0m[0m[1m[38;5;12m|[0m[0m                  [0m[0m[1m[38;5;9m^^^^^[0m[0m [0m[0m[1m[38;5;9mmethod not found in `Stderr`[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0m/rustc/6b00bc3880198600130e1cf62b8f8a93494488cc/library/std/src/io/mod.rs:1761:8[0m
+[0m   [0m[0m[1m[38;5;12m |[0m
+[0m   [0m[0m[1m[38;5;12m = note: the method is available for `std::io::Stderr` here[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m    [0m[0m[1m[38;5;12m= [0m[0m[1mhelp[0m[0m: items from traits can only be used if the trait is in scope[0m
+[0m[1m[38;5;14mhelp[0m[0m: trait `Write` which provides `flush` is implemented but not in scope; perhaps you want to import it[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m13[0m[0m  [0m[0m[38;5;10m+ use std::io::Write;[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+
+[0m[1m[38;5;9merror[E0599][0m[0m[1m: no function or associated item named `port_flag` found for struct `exec::ssh::SshDeploySession` in the current scope[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/exec/ssh.rs:394:38[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m297[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0mpub struct SshDeploySession {[0m
+[0m    [0m[0m[1m[38;5;12m|[0m[0m [0m[0m[1m[38;5;12m---------------------------[0m[0m [0m[0m[1m[38;5;12mfunction or associated item `port_flag` not found for this struct[0m
+[0m[1m[38;5;12m...[0m
+[0m[1m[38;5;12m394[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m        assert_eq!(SshDeploySession::port_flag("ssh"), "-p");[0m
+[0m    [0m[0m[1m[38;5;12m|[0m[0m                                      [0m[0m[1m[38;5;9m^^^^^^^^^[0m[0m [0m[0m[1m[38;5;9mfunction or associated item not found in `SshDeploySession`[0m
+
+[0m[1m[38;5;9merror[E0599][0m[0m[1m: no function or associated item named `port_flag` found for struct `exec::ssh::SshDeploySession` in the current scope[0m
+[0m   [0m[0m[1m[38;5;12m--> [0m[0msrc/exec/ssh.rs:395:38[0m
+[0m    [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m297[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0mpub struct SshDeploySession {[0m
+[0m    [0m[0m[1m[38;5;12m|[0m[0m [0m[0m[1m[38;5;12m---------------------------[0m[0m [0m[0m[1m[38;5;12mfunction or associated item `port_flag` not found for this struct[0m
+[0m[1m[38;5;12m...[0m
+[0m[1m[38;5;12m395[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m        assert_eq!(SshDeploySession::port_flag("scp"), "-P");[0m
+[0m    [0m[0m[1m[38;5;12m|[0m[0m                                      [0m[0m[1m[38;5;9m^^^^^^^^^[0m[0m [0m[0m[1m[38;5;9mfunction or associated item not found in `SshDeploySession`[0m
+
+[0m[1m[33mwarning[0m[0m[1m: variable does not need to be mutable[0m
+[0m  [0m[0m[1m[38;5;12m--> [0m[0msrc/ui/panels/status_bar.rs:15:9[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12m15[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    let mut advance =[0m
+[0m   [0m[0m[1m[38;5;12m|[0m[0m         [0m[0m[1m[38;5;12m----[0m[0m[1m[33m^^^^^^^[0m
+[0m   [0m[0m[1m[38;5;12m|[0m[0m         [0m[0m[1m[38;5;12m|[0m
+[0m   [0m[0m[1m[38;5;12m|[0m[0m         [0m[0m[1m[38;5;12mhelp: remove this `mut`[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+[0m   [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: `#[warn(unused_mut)]` on by default[0m
+
+[0m[1mSome errors have detailed explanations: E0425, E0599.[0m
+[0m[1mFor more information about an error, try `rustc --explain E0425`.[0m
+[1m[33mwarning[0m[1m:[0m `chronosphere` (bin "chronosphere") generated 2 warnings
+[1m[31merror[0m[1m:[0m could not compile `chronosphere` (bin "chronosphere") due to 22 previous errors; 2 warnings emitted
+[1m[33mwarning[0m[1m:[0m build failed, waiting for other jobs to finish...
+[0m[1mSome errors have detailed explanations: E0425, E0428, E0599.[0m
+[1m[33mwarning[0m[1m:[0m `chronosphere` (bin "chronosphere" test) generated 2 warnings (2 duplicates)
+[1m[31merror[0m[1m:[0m could not compile `chronosphere` (bin "chronosphere" test) due to 25 previous errors; 2 warnings emitted
+
+Traceback (most recent call last):
+  File "/tmp/replay_hardening_v3.py", line 425, in main
+    run("cargo", "clippy", "--locked", "--all-targets", "--all-features", "--", "-D", "clippy::correctness", "-D", "clippy::suspicious")
+  File "/tmp/replay_hardening_v3.py", line 24, in run
+    raise RuntimeError(f"command failed ({result.returncode}): {' '.join(args)}")
+RuntimeError: command failed (101): cargo clippy --locked --all-targets --all-features -- -D clippy::correctness -D clippy::suspicious
+
+$ git reset --hard 5b946f2a13ed11c6195c70d26492fa8bc300c4d3
+HEAD is now at 5b946f2 chore: rerun deterministic hardening replay
