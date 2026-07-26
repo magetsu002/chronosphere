@@ -28,15 +28,18 @@ jobs:
       - name: Build validated seven-commit branch
         shell: bash
         run: |
-          sed -i 's#fix/trust-and-reliability-final#fix/trust-and-reliability-final-v2#' .github/finalize_hardening.py
+          cp .github/finalize_hardening.py /tmp/finalize_hardening.py
+          sed -i 's#fix/trust-and-reliability-final#fix/trust-and-reliability-final-v2#' /tmp/finalize_hardening.py
           set +e
-          python3 .github/finalize_hardening.py > /tmp/finalize-hardening.log 2>&1
+          python3 /tmp/finalize_hardening.py > /tmp/finalize-hardening.log 2>&1
           status=$?
           set -e
           cat /tmp/finalize-hardening.log
           if [ "$status" -ne 0 ]; then
+            git cherry-pick --abort 2>/dev/null || true
+            git reset --hard
+            git switch -f chore/trust-reliability-closeout
             cp /tmp/finalize-hardening.log .github/finalize-failure.txt
-            git switch chore/trust-reliability-closeout
             git add .github/finalize-failure.txt
             git commit -m "chore: capture hardening closeout failure"
             git push origin HEAD:chore/trust-reliability-closeout
