@@ -31,9 +31,9 @@ jobs:
           set +e
           {
             cat .github/job-recovery-chunks/{00..08} > /tmp/job-recovery.b64
-            echo "d1f31b981f6ef3634e1e527a9d6f17a075711d3b5c631f6dfe59aab31f35f4f4  /tmp/job-recovery.b64" | sha256sum -c -
+            echo "143e3cdea9547b4e4aee850855be7544bf391854b3e93d8e0e034a935a3fe81c  /tmp/job-recovery.b64" | sha256sum -c -
             base64 -d /tmp/job-recovery.b64 | gzip -d > /tmp/job_recovery_impl.py
-            echo "5e1e737763126f2f72a2fee96c8f2cd8cb3245f295ea69a98e8e4284287cdcb3  /tmp/job_recovery_impl.py" | sha256sum -c -
+            echo "7e688c015204fcb6ef8aaf953787fa8499762884cb48b05635a20374bea7ac4a  /tmp/job_recovery_impl.py" | sha256sum -c -
             python3 /tmp/job_recovery_impl.py
           } > /tmp/job-recovery.log 2>&1
           status=$?
@@ -52,4 +52,4 @@ jobs:
           fi
           tail -n 100 /tmp/job-recovery.log
 
-# Final trigger after all verified payload chunks were staged.
+# Trigger after the stale runtime-map reference was corrected.
