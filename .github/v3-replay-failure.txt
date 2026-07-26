@@ -1,5 +1,5 @@
 $ git rev-parse HEAD
-e24d6674ce8396c102d77b330fc86d626c7ec98b
+a3ee11eb14c2059aba16402cbbef0ffcb7de5154
 
 $ git config user.name Chronosphere Hardening
 $ git config user.email actions@users.noreply.github.com
@@ -17,5 +17,5 @@ Traceback (most recent call last):
     raise RuntimeError("resolve context call not found")
 RuntimeError: resolve context call not found
 
-$ git reset --hard e24d6674ce8396c102d77b330fc86d626c7ec98b
-HEAD is now at e24d667 chore: make deterministic replay self-diagnosing
+$ git reset --hard a3ee11eb14c2059aba16402cbbef0ffcb7de5154
+HEAD is now at a3ee11e chore: rerun replay with robust context transformer
