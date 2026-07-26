@@ -1,0 +1,63 @@
+a82f0e0571a5ab8348d2bdecc1007f2abebeeb1b chore: bootstrap hardening workflow
+77b224a67a382a8b9f20f4fc16f2b7fdbf703dc2 chore: add hardening diagnostics
+150eebade8386a825e7ac89bfd30a16f33e30fdf chore: capture hardening failure
+fb5761f75715871b629986f545fbf4342605188c chore: record hardening failure
+47efd7b47607c061e1f3fb0d99fdd18c07364ab1 chore: retry hardening implementation
+a74ff8e7bd47abc5e2471d90f58fb767509ac37a fix: enforce explicit and safe execution context
+27cdf8d242b47086fc905b6bb391b456980f51af fix: redact secrets from storage and output
+f770bad6e78f3a6fdcd6a0318ce9a07235321af4 fix: add reliable job cancellation and timeout handling
+b92b6da211dd806f34c36285ec596db894e70284 chore: record hardening failure
+a830dbe03f8bd185cd74bf92ebaddf2c05f57236 fix: repair private history persistence
+8ba43c6c3b43d4ba3990c545100a3571a2f8edf6 chore: resume hardening milestones
+ca031c3ea53f2e9fe815062849c73abc95164a85 chore: record hardening failure
+be75b1f39c9b8a468a050877a21d8149a557c68f fix: display cancelled and timed out jobs
+f04069b99d3bed22762c36c1fb27b4e89c5f199d chore: continue hardening validation
+2e8c0e5305954a7e89bf6fa254ef3859da35c18d chore: configure hardening commits
+b2eaaf4621622f825b0c660184082575c11ae931 chore: publish remaining hardening milestones
+f5b9fde6cab3a4a03a8052f27df82a5e2392e78e chore: publish compile gap fix
+91f516ebe2273b0fcccf056113c02bfdda9100a2 fix: close job status compile gaps
+49f640e7a7a1b6deb563479701f5685b8b67625a chore: publish ssh hardening milestone
+ec0b38503022eb39475fed3a23f4d71a26546e63 fix: harden ssh deployment and authentication
+a3466eab9767e66faf1216e4237ac5571aea30e9 chore: publish template safety milestone
+219ffb073762f7d66bae10724ab672281046d5a7 fix: validate templates before command execution
+ca8d409d88ea7d140aee71a52c74484e6c466f69 chore: publish persistence hardening milestone
+ac8fe981ec5fe92c12d53fdcd08d34370fb80057 fix: make engagement and cve persistence resilient
+4819feb96b618b4422e8d04a4e967944942fbee5 chore: publish ci and release milestone
+dd69e269f318376f45c7a00cff42b8c4f9547f13 chore: diagnose ci hardening milestone
+9653892a76a4a1532817b8c54dbe51f10a321793 ci: declare supported Rust toolchain
+961bdcf9d52e4f9e23475843a1e4eb41764e081a ci: add strict Rust validation gates
+4124d10082dc1ea251ec77ea5634303b19755ded ci: gate releases on validation
+fbdd93f4bdb452d5e777ff41f99fc1ba1d8a3c4d chore: format hardening branch
+c795d7a0576abe779b72c4bb6da3ec49795230dd style: format hardening changes
+80c8da3197c34814a21e6a03cbf8409388b2e8b8 chore: remove hardening bootstrap
+4356d8c8bae243804664f0fcc815a499c29828eb chore: remove hardening diagnostics
+5613952fa59cae0098152da695f30922d3ee3583 chore: remove hardening failure log
+e2217a98b48310d28234444a12552e012483293a chore: capture clippy diagnostics
+c4530eaa79a1c5163fcf04711a6c1ab2ff89c406 chore: record clippy diagnostics
+c14505a373d3ff767295e11c7a8b4b998af8349b chore: refresh Cargo lockfile
+78ed9ac2c815bdf782f9e2b807a11daaa08ab2be chore: capture compile diagnostics
+5c5ef364d0b522043c0a6abf04e25bfdee308921 chore: record compile diagnostics
+7794e22c206c0413672c050fc41fea89d9184c65 build: align minimum Rust version
+a9695f6a262cfeb2ca5c0b566e74c5ce625fb5e8 ci: validate with Rust 1.88
+7bf1673617117840fafd9d8e60ab431c19cd5920 ci: release with Rust 1.88
+b163b68e7ed54518e578b779d4c1f5d0d2a70e7b chore: refresh lockfile with Rust 1.88
+92951802bfed1f2ff11899b45155bfeca12a63a1 build: refresh lockfile for Rust 1.88
+50c9a611ca4c5d9eccee827146f07f30613e1cea chore: remove clippy diagnostics
+c7cefabbc29446a1f133fd127dcc32e6c2fd2205 chore: remove clippy failure log
+79fdf8d2ff7a778e52710866b40e7cd2ae914a6c chore: remove compile failure log
+7dff65c2eab35056f21e16bc5a26e06f3527abec chore: capture final clippy findings
+c01f0998dff470e9097708d9e58839088bbf0a20 chore: record final clippy findings
+7195ec175ad32a8f449551fe56fc900412dccdbc ci: gate Clippy correctness findings
+3fdff515f1c18f27a11f303173c0afd24f3e9b75 ci: gate release Clippy correctness findings
+eaba7559665b5ae4577ab3c88e1c4a88408df426 chore: remove final clippy diagnostics
+b139e987c3b9d4e37d0d71ecdb19113157afe07e chore: remove final clippy findings
+4b06c176ec736f7114d1b94a0d04ccfbb0d0e3ee ci: preserve validation output across gates
+ce99056f57f9c693bd900415a7e6fb0d330d5164 chore: stage focused ssh hardening fix
+3edd2d6abaacd65d98a1c8dc4655356ab62b897f fix: finish ssh deployment hardening
+b384afa5287254455f02868b9829c427f70b8994 chore: stage template safety closeout
+33ea82916ff43882e60a6b16178cc3b5295376ae fix: finish template validation safety
+dca14a443a2cac975d967a17dcd97f76f5bd8531 ci: finish strict validation and release gates
+535aa5e9bdb62b545c97389a0aa50bcff8bdd56a chore: stage latest main integration
+03ef57f11e1b70a1cd60e88c374f918a3c7835c6 chore: make main integration report exact conflicts
+64554757d96e1e9a297dad3f315ab0f43b8b9a7e chore: capture latest main merge conflicts
+f474af199e3f7e088b7aae9fed76d5a91f96eebb chore: stage safe latest-main conflict resolution
