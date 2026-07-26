@@ -41,15 +41,45 @@ b5ef47bd4faf7e1f53e6e5742b5c51fab9fdd798	chore: rerun hardening with tracked dia
 d2f5c34072c3f314631ceaa9179079c990ecba22	chore: run deterministic hardening replay
 ebcf539d483f13c1a6905ff62a807be18a17489b	chore: stage deterministic hardening replay
 + git switch --detach origin/main
-error: Your local changes to the following files would be overwritten by checkout:
-	.github/finalize_hardening.py
-Please commit your changes or stash them before you switch branches.
-Aborting
+HEAD is now at d689fa8 Add Kerberos ADCS certipy variants for NTLM-off DCs.
++ git switch -c fix/trust-and-reliability-final-v2
+Switched to a new branch 'fix/trust-and-reliability-final-v2'
++ git cherry-pick bea8d0b6f4d4df1f2939484d0d63d55f97c4d7a1
+[fix/trust-and-reliability-final-v2 44a7d88] fix: enforce explicit and safe execution context
+ Date: Sun Jul 26 15:24:05 2026 +0000
+ 43 files changed, 956 insertions(+), 587 deletions(-)
++ git cherry-pick b579c58ebcf13d544e0f49e482d5ddbef2d3ad5a
+[fix/trust-and-reliability-final-v2 ece2bc0] fix: redact secrets from storage and output
+ Date: Sun Jul 26 15:24:05 2026 +0000
+ 13 files changed, 318 insertions(+), 75 deletions(-)
+ create mode 100644 src/security.rs
++ git cherry-pick c6e4aa0ac78140c066d94cfa4a4c1ca308221561
+[fix/trust-and-reliability-final-v2 b869d9a] fix: add reliable job cancellation and timeout handling
+ Date: Sun Jul 26 15:24:05 2026 +0000
+ 6 files changed, 237 insertions(+), 100 deletions(-)
++ git cherry-pick 943c0a9bd6fde28f374493d376169b817e8bc1ba
+[fix/trust-and-reliability-final-v2 8321d84] fix: harden ssh deployment and authentication
+ Date: Sun Jul 26 15:24:07 2026 +0000
+ 5 files changed, 317 insertions(+), 444 deletions(-)
++ cargo fmt
+error: prefix `ec` is unknown
+   --> /home/runner/work/chronosphere/chronosphere/src/exec/ssh.rs:285:62
+    |
+285 |                 "{trap}{scp_cmd} && {ssh_cmd}; ec=$?; echo "$ec" > {status}; {cleanup}",
+    |                                                              ^^ unknown prefix
+    |
+    = note: prefixed identifiers and literals are reserved since Rust 2021
+help: consider inserting whitespace here
+    |
+285 |                 "{trap}{scp_cmd} && {ssh_cmd}; ec=$?; echo "$ec " > {status}; {cleanup}",
+    |                                                                +
+
+Error writing files: failed to resolve mod `ssh`: cannot parse /home/runner/work/chronosphere/chronosphere/src/exec/ssh.rs
 Traceback (most recent call last):
-  File "/home/runner/work/chronosphere/chronosphere/.github/finalize_hardening.py", line 417, in <module>
+  File "/tmp/finalize_hardening.py", line 417, in <module>
     main()
-  File "/home/runner/work/chronosphere/chronosphere/.github/finalize_hardening.py", line 375, in main
-    run("git", "switch", "--detach", "origin/main")
-  File "/home/runner/work/chronosphere/chronosphere/.github/finalize_hardening.py", line 26, in run
+  File "/tmp/finalize_hardening.py", line 382, in main
+    run("cargo", "fmt")
+  File "/tmp/finalize_hardening.py", line 26, in run
     raise RuntimeError(f"command failed ({result.returncode}): {' '.join(args)}")
-RuntimeError: command failed (1): git switch --detach origin/main
+RuntimeError: command failed (1): cargo fmt
