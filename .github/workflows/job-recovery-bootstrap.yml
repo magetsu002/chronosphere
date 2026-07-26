@@ -45,3 +45,5 @@ jobs:
             git push origin HEAD:chore/job-recovery-bootstrap
             exit "$status"
           fi
+
+# Triggered after the workflow was present on the branch.
