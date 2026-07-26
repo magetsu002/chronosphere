@@ -1,0 +1,41 @@
+name: Clippy diagnostics
+
+on:
+  pull_request:
+    types: [synchronize]
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    if: github.head_ref == 'fix/trust-and-reliability-v1'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.88"
+          components: clippy
+      - name: Capture strict Clippy output
+        run: |
+          if [ "$(git log -1 --pretty=%s)" != "chore: capture final clippy findings" ]; then
+            echo "Diagnostic already consumed."
+            exit 0
+          fi
+          git config user.name "Chronosphere Hardening Bot"
+          git config user.email "actions@users.noreply.github.com"
+          set +e
+          cargo clippy --locked --all-targets --all-features -- -D warnings > /tmp/clippy.log 2>&1
+          status=$?
+          set -e
+          tail -n 240 /tmp/clippy.log > .github/CLIPPY_FAILURE.txt
+          git add .github/CLIPPY_FAILURE.txt
+          git commit -m "chore: record final clippy findings"
+          git push origin HEAD:fix/trust-and-reliability-v1
+          exit "$status"
