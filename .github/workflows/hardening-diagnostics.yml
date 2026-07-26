@@ -28,10 +28,44 @@ jobs:
           components: rustfmt, clippy
       - name: Resume milestones and capture failures
         run: |
-          if [ "$(git log -1 --pretty=%s)" != "chore: resume hardening milestones" ]; then
+          if [ "$(git log -1 --pretty=%s)" != "chore: continue hardening validation" ]; then
             echo "Diagnostic bootstrap already consumed."
             exit 0
           fi
+          python3 - <<'PY'
+          from pathlib import Path
+
+          job_log = Path('src/ui/modals/job_log.rs')
+          text = job_log.read_text()
+          text = text.replace(
+              'use crate::engagement::{JobRecord, JobStatus};',
+              'use crate::engagement::JobRecord;',
+              1,
+          )
+          text = text.replace(
+              '    use crate::app::JobLogModal;\n',
+              '    use crate::app::JobLogModal;\n    use crate::engagement::JobStatus;\n',
+              1,
+          )
+          job_log.write_text(text)
+
+          context = Path('src/render/context.rs')
+          text = context.read_text()
+          text = text.replace(
+              '            /// Hostname-first address for HTTP URLs (e.g. sub1.target.htb); falls back to IP.',
+              '            // Hostname-first address for HTTP URLs (e.g. sub1.target.htb); falls back to IP.',
+              1,
+          )
+          text = text.replace(
+              '            /// Root domain for vhost/subdomain fuzz (e.g. target.htb). Override with -v vhost_root=...',
+              '            // Root domain for vhost/subdomain fuzz (e.g. target.htb). Override with -v vhost_root=...',
+              1,
+          )
+          context.write_text(text)
+          PY
+          git add src/ui/modals/job_log.rs src/render/context.rs
+          git commit -m "fix: close job status compile gaps"
+
           python3 - <<'PY'
           from pathlib import Path
           import base64
