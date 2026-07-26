@@ -12,8 +12,8 @@
 //! string_lit := "'" non-quote-chars "'"
 //! ```
 //!
-//! Anything we can't parse evaluates to `true` (fail-open) so that a typo doesn't hide commands;
-//! the parser error is logged but doesn't crash rendering.
+//! Invalid expressions evaluate to `false` (fail-closed) so a typo cannot expose a command
+//! outside its intended context. The parser error is logged without crashing rendering.
 
 use super::context::RenderContext;
 
@@ -49,7 +49,6 @@ fn parse(expr: &str) -> Result<Node, String> {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-
 enum Tok {
     Ident(String),
     Str(String),
