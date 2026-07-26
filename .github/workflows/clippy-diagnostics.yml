@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  diagnose:
+  refresh:
     if: github.head_ref == 'fix/trust-and-reliability-v1'
     runs-on: ubuntu-latest
     steps:
@@ -20,21 +20,25 @@ jobs:
           persist-credentials: true
       - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: "1.85"
-      - name: Capture compile diagnostics
+          toolchain: "1.88"
+      - name: Refresh lockfile and README
         run: |
-          if [ "$(git log -1 --pretty=%s)" != "chore: capture compile diagnostics" ]; then
-            echo "Diagnostic already consumed."
+          if [ "$(git log -1 --pretty=%s)" != "chore: refresh lockfile with Rust 1.88" ]; then
+            echo "Refresh already consumed."
             exit 0
           fi
           git config user.name "Chronosphere Hardening Bot"
           git config user.email "actions@users.noreply.github.com"
-          set +e
-          cargo check > /tmp/check.log 2>&1
-          status=$?
-          set -e
-          tail -n 260 /tmp/check.log > .github/COMPILE_FAILURE.txt
-          git add Cargo.lock .github/COMPILE_FAILURE.txt
-          git commit -m "chore: record compile diagnostics"
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('README.md')
+          text = path.read_text()
+          marker = 'Needs Rust ≥ 1.85 (edition 2024).'
+          if marker not in text:
+              raise SystemExit('README Rust marker not found')
+          path.write_text(text.replace(marker, 'Needs Rust ≥ 1.88 (edition 2024).', 1))
+          PY
+          cargo check
+          git add Cargo.lock README.md
+          git commit -m "build: refresh lockfile for Rust 1.88"
           git push origin HEAD:fix/trust-and-reliability-v1
-          exit "$status"
