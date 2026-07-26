@@ -1179,7 +1179,7 @@ fn open_engagement(root: &Path, name: Option<&str>) -> Result<Engagement> {
             }
         }
     };
-    Engagement::load(root.join(&pick)).with_context(|| format!("load engagement {}", pick))
+    Engagement::load_named(root, &pick).with_context(|| format!("load engagement {}", pick))
 }
 
 fn build_context(
@@ -1188,43 +1188,66 @@ fn build_context(
     ap_override: &Option<String>,
     cred_override: &Option<String>,
     extra_vars: &[String],
-) -> RenderContext {
+) -> Result<RenderContext> {
     let mut ctx = RenderContext::default();
-    let active_t = target_override
-        .as_deref()
-        .and_then(|n| e.targets.targets.iter().find(|t| t.name == n))
-        .or_else(|| e.targets.active());
-    if let Some(t) = active_t {
-        ctx.target = Some(t.clone());
+    let active_t = match target_override.as_deref() {
+        Some(name) => Some(
+            e.targets
+                .targets
+                .iter()
+                .find(|target| target.name == name)
+                .ok_or_else(|| anyhow!("no target named {}", name))?,
+        ),
+        None => e.targets.active(),
+    };
+    if let Some(target) = active_t {
+        ctx.target = Some(target.clone());
     }
-    let active_ap = ap_override
-        .as_deref()
-        .and_then(|n| e.aps.aps.iter().find(|a| a.name == n))
-        .or_else(|| e.aps.active());
-    if let Some(a) = active_ap {
-        ctx.ap = Some(a.clone());
+
+    let active_ap = match ap_override.as_deref() {
+        Some(name) => Some(
+            e.aps
+                .aps
+                .iter()
+                .find(|ap| ap.name == name)
+                .ok_or_else(|| anyhow!("no access point named {}", name))?,
+        ),
+        None => e.aps.active(),
+    };
+    if let Some(ap) = active_ap {
+        ctx.ap = Some(ap.clone());
     }
-    let active_p = cred_override
-        .as_deref()
-        .and_then(|n| e.profiles.profiles.iter().find(|p| p.name == n))
-        .or_else(|| e.profiles.active());
-    if let Some(p) = active_p {
-        ctx.profile = Some(p.clone());
+
+    let active_profile = match cred_override.as_deref() {
+        Some(name) => Some(
+            e.profiles
+                .profiles
+                .iter()
+                .find(|profile| profile.name == name)
+                .ok_or_else(|| anyhow!("no credential profile named {}", name))?,
+        ),
+        None => e.profiles.active(),
+    };
+    if let Some(profile) = active_profile {
+        ctx.profile = Some(profile.clone());
     }
+
     ctx.pivot_tunnel = e.pivots.active_tunnel().cloned();
     ctx.pivot_remote = e.pivots.active_remote().cloned();
     ctx.execution_mode = e.pivots.execution_mode;
     ctx.engagement_dir = Some(e.dir.clone());
     ctx.globals = e.variables.values.clone();
     for kv in extra_vars {
-        if let Some((k, v)) = kv.split_once('=') {
-            ctx.globals.insert(k.trim().to_string(), v.to_string());
+        if let Some((key, value)) = kv.split_once('=') {
+            ctx.globals
+                .insert(key.trim().to_string(), value.to_string());
         }
     }
-    ctx
+    Ok(ctx)
 }
 
 fn resolve(
+
     root: &Path,
     engagement: Option<&str>,
     target_override: &Option<String>,
@@ -1242,13 +1265,13 @@ fn resolve(
         .flat_map(|c| c.commands.iter())
         .find(|c| c.id == id)
         .ok_or_else(|| anyhow!("command id '{}' not found", id))?;
-    let ctx = build_context(
-        &e,
-        target_override,
-        ap_override,
-        cred_override,
-        extra_vars,
-    );
+let ctx = build_context(
+    &e,
+    target_override,
+    ap_override,
+    cred_override,
+    extra_vars,
+)?;
     let tmpl = cmd.applicable_template(&|w| crate::render::condition::evaluate(w, &ctx));
     let result = render::render(tmpl, &ctx)?;
     Ok(result.resolved)

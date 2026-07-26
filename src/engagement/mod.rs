@@ -69,15 +69,37 @@ impl Engagement {
         dir.join("commands")
     }
 
-    pub fn create(root: &Path, name: &str) -> Result<Self> {
-        if name.is_empty()
-            || name.contains('/')
-            || name.contains('\\')
-            || name.starts_with('.')
-        {
-            anyhow::bail!("invalid engagement name '{}'", name);
-        }
-        let dir = root.join(name);
+pub fn validate_name(name: &str) -> Result<()> {
+    if name.is_empty()
+        || name == "."
+        || name == ".."
+        || name.contains('/')
+        || name.contains('\\')
+        || name.starts_with('.')
+    {
+        anyhow::bail!("invalid engagement name '{}'", name);
+    }
+    Ok(())
+}
+
+pub fn load_named(root: &Path, name: &str) -> Result<Self> {
+    Self::validate_name(name)?;
+    let canonical_root = root
+        .canonicalize()
+        .with_context(|| format!("canonicalize engagement root {}", root.display()))?;
+    let requested = root.join(name);
+    let canonical_dir = requested
+        .canonicalize()
+        .with_context(|| format!("resolve engagement {}", requested.display()))?;
+    if !canonical_dir.starts_with(&canonical_root) {
+        anyhow::bail!("engagement '{}' escapes configured root", name);
+    }
+    Self::load(canonical_dir)
+}
+
+pub fn create(root: &Path, name: &str) -> Result<Self> {
+    Self::validate_name(name)?;
+    let dir = root.join(name);
         if dir.exists() {
             anyhow::bail!("engagement '{}' already exists", name);
         }

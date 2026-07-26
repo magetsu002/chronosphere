@@ -32,14 +32,28 @@ impl State {
     pub fn new(root: PathBuf, engagement_name: Option<String>) -> Result<Self> {
         std::fs::create_dir_all(&root).ok();
         let _ = builtin::ensure_user_dir();
-        let engagement = match engagement_name {
-            Some(name) => Some(Engagement::load(root.join(&name))
-                .with_context(|| format!("load engagement '{}'", name))?),
-            None => match Engagement::list(&root).into_iter().next() {
-                Some(name) => Engagement::load(root.join(&name)).ok(),
-                None => None,
-            },
-        };
+let engagement = match engagement_name {
+    Some(name) => Some(
+        Engagement::load_named(&root, &name)
+            .with_context(|| format!("load engagement '{}'", name))?,
+    ),
+    None => {
+        let available = Engagement::list(&root);
+        match available.as_slice() {
+            [] => None,
+            [name] => Some(
+                Engagement::load_named(&root, name)
+                    .with_context(|| format!("load engagement '{}'", name))?,
+            ),
+            _ => {
+                return Err(anyhow!(
+                    "multiple engagements available; start mcp-serve with an explicit engagement: {}",
+                    available.join(", ")
+                ));
+            }
+        }
+    }
+};
         let lib_sources = library_sources(&root, engagement.as_ref());
         let paths: Vec<&Path> = lib_sources.iter().map(|p| p.as_path()).collect();
         let library = CommandLibrary::load(&paths).context("load library")?;
@@ -56,41 +70,68 @@ impl State {
         ap_override: Option<&str>,
         cred_override: Option<&str>,
         extra_vars: &serde_json::Map<String, Value>,
-    ) -> RenderContext {
+    ) -> Result<RenderContext> {
         let mut ctx = RenderContext::default();
-        if let Some(e) = &self.engagement {
-            let t = target_override
-                .and_then(|n| e.targets.targets.iter().find(|t| t.name == n))
-                .or_else(|| e.targets.active());
-            if let Some(t) = t {
-                ctx.target = Some(t.clone());
+        if let Some(engagement) = &self.engagement {
+            let target = match target_override {
+                Some(name) => Some(
+                    engagement
+                        .targets
+                        .targets
+                        .iter()
+                        .find(|target| target.name == name)
+                        .ok_or_else(|| anyhow!("no target named {}", name))?,
+                ),
+                None => engagement.targets.active(),
+            };
+            if let Some(target) = target {
+                ctx.target = Some(target.clone());
             }
-            let a = ap_override
-                .and_then(|n| e.aps.aps.iter().find(|a| a.name == n))
-                .or_else(|| e.aps.active());
-            if let Some(a) = a {
-                ctx.ap = Some(a.clone());
+
+            let ap = match ap_override {
+                Some(name) => Some(
+                    engagement
+                        .aps
+                        .aps
+                        .iter()
+                        .find(|ap| ap.name == name)
+                        .ok_or_else(|| anyhow!("no access point named {}", name))?,
+                ),
+                None => engagement.aps.active(),
+            };
+            if let Some(ap) = ap {
+                ctx.ap = Some(ap.clone());
             }
-            let p = cred_override
-                .and_then(|n| e.profiles.profiles.iter().find(|p| p.name == n))
-                .or_else(|| e.profiles.active());
-            if let Some(p) = p {
-                ctx.profile = Some(p.clone());
+
+            let profile = match cred_override {
+                Some(name) => Some(
+                    engagement
+                        .profiles
+                        .profiles
+                        .iter()
+                        .find(|profile| profile.name == name)
+                        .ok_or_else(|| anyhow!("no credential profile named {}", name))?,
+                ),
+                None => engagement.profiles.active(),
+            };
+            if let Some(profile) = profile {
+                ctx.profile = Some(profile.clone());
             }
-            ctx.pivot_tunnel = e.pivots.active_tunnel().cloned();
-            ctx.pivot_remote = e.pivots.active_remote().cloned();
-            ctx.execution_mode = e.pivots.execution_mode;
-            ctx.engagement_dir = Some(e.dir.clone());
-            ctx.globals = e.variables.values.clone();
+
+            ctx.pivot_tunnel = engagement.pivots.active_tunnel().cloned();
+            ctx.pivot_remote = engagement.pivots.active_remote().cloned();
+            ctx.execution_mode = engagement.pivots.execution_mode;
+            ctx.engagement_dir = Some(engagement.dir.clone());
+            ctx.globals = engagement.variables.values.clone();
         }
-        for (k, v) in extra_vars {
-            if let Some(s) = v.as_str() {
-                ctx.globals.insert(k.clone(), s.to_string());
-            } else {
-                ctx.globals.insert(k.clone(), v.to_string());
-            }
+        for (key, value) in extra_vars {
+            let value = value
+                .as_str()
+                .map(ToOwned::to_owned)
+                .unwrap_or_else(|| value.to_string());
+            ctx.globals.insert(key.clone(), value);
         }
-        ctx
+        Ok(ctx)
     }
 
     fn reload_library(&mut self) {
@@ -557,7 +598,7 @@ async fn tool_show_command(args: Value, state: Arc<Mutex<State>>) -> Result<Valu
         args.ap.as_deref(),
         args.creds.as_deref(),
         &extra,
-    );
+    )?;
     let tmpl =
         cmd.applicable_template(&|w| crate::render::condition::evaluate(w, &ctx));
     let rendered = render::render(tmpl, &ctx).map_err(|e| anyhow!("{}", e))?;
@@ -585,7 +626,7 @@ async fn tool_render_command(args: Value, state: Arc<Mutex<State>>) -> Result<Va
         args.ap.as_deref(),
         args.creds.as_deref(),
         &extra,
-    );
+    )?;
     let tmpl =
         cmd.applicable_template(&|w| crate::render::condition::evaluate(w, &ctx));
     let rendered = render::render(tmpl, &ctx).map_err(|e| anyhow!("{}", e))?;
@@ -620,8 +661,8 @@ async fn tool_run_command(args: Value, state: Arc<Mutex<State>>) -> Result<Value
             args.target.as_deref(),
             args.ap.as_deref(),
             args.creds.as_deref(),
-            &extra,
-        );
+        &extra,
+    )?;
         let tmpl =
             cmd.applicable_template(&|w| crate::render::condition::evaluate(w, &ctx));
         let rendered = render::render(tmpl, &ctx).map_err(|e| anyhow!("{}", e))?;
@@ -1032,7 +1073,7 @@ async fn tool_engagement_switch(args: Value, state: Arc<Mutex<State>>) -> Result
         .ok_or_else(|| anyhow!("missing name"))?
         .to_string();
     let mut s = state.lock().await;
-    let eng = Engagement::load(s.root.join(&name))
+    let eng = Engagement::load_named(&s.root, &name)
         .with_context(|| format!("load engagement '{}'", name))?;
     s.engagement = Some(eng);
     s.reload_library();
