@@ -1,0 +1,50 @@
+name: Finish template safety
+
+on:
+  push:
+    branches: [fix/trust-and-reliability-v1]
+
+permissions:
+  contents: write
+
+jobs:
+  finish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/trust-and-reliability-v1
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Apply focused template safety fix
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/render/condition.rs")
+          source = path.read_text()
+          old = (
+              "//! Anything we can't parse evaluates to `true` (fail-open) so that a typo doesn't hide commands;\n"
+              "//! the parser error is logged but doesn't crash rendering.\n"
+          )
+          new = (
+              "//! Invalid expressions evaluate to `false` (fail-closed) so a typo cannot expose a command\n"
+              "//! outside its intended context. The parser error is logged without crashing rendering.\n"
+          )
+          if source.count(old) != 1:
+              raise SystemExit("expected the stale fail-open condition comment exactly once")
+          source = source.replace(old, new, 1)
+          source = source.replace(
+              "#[derive(Debug, PartialEq, Eq)]\n\nenum Tok {",
+              "#[derive(Debug, PartialEq, Eq)]\nenum Tok {",
+              1,
+          )
+          path.write_text(source)
+          PY
+          rm .github/workflows/finish-template-safety.yml
+          cargo fmt --check
+          git config user.name "Chronosphere Hardening"
+          git config user.email "actions@users.noreply.github.com"
+          git add src/render/condition.rs .github/workflows/finish-template-safety.yml
+          git commit -m "fix: finish template validation safety"
+          git push origin HEAD:fix/trust-and-reliability-v1
