@@ -8,12 +8,8 @@ on:
 permissions:
   contents: write
 
-concurrency:
-  group: chronosphere-hardening-publisher-${{ github.event.pull_request.number }}
-  cancel-in-progress: false
-
 jobs:
-  apply:
+  publish:
     if: github.head_ref == 'fix/trust-and-reliability-v1'
     runs-on: ubuntu-latest
     steps:
@@ -22,91 +18,43 @@ jobs:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
           persist-credentials: true
-      - name: Publish remaining milestones
+      - name: Publish compile gap fix
         run: |
-          if [ "$(git log -1 --pretty=%s)" != "chore: publish remaining hardening milestones" ]; then
+          if [ "$(git log -1 --pretty=%s)" != "chore: publish compile gap fix" ]; then
             echo "Publisher already consumed."
             exit 0
           fi
           git config user.name "Chronosphere Hardening Bot"
           git config user.email "actions@users.noreply.github.com"
-
           python3 - <<'PY'
           from pathlib import Path
-          import base64
-          import gzip
-          import re
 
-          # Close compile gaps introduced by the new explicit job states.
           job_log = Path('src/ui/modals/job_log.rs')
           text = job_log.read_text()
+          old = 'use crate::engagement::{JobRecord, JobStatus};'
+          if old not in text:
+              raise SystemExit('job log import marker not found')
+          text = text.replace(old, 'use crate::engagement::JobRecord;', 1)
+          marker = '    use crate::app::JobLogModal;\n'
+          if marker not in text:
+              raise SystemExit('job log test marker not found')
           text = text.replace(
-              'use crate::engagement::{JobRecord, JobStatus};',
-              'use crate::engagement::JobRecord;',
-              1,
-          )
-          text = text.replace(
-              '    use crate::app::JobLogModal;\n',
-              '    use crate::app::JobLogModal;\n    use crate::engagement::JobStatus;\n',
+              marker,
+              marker + '    use crate::engagement::JobStatus;\n',
               1,
           )
           job_log.write_text(text)
 
           context = Path('src/render/context.rs')
           text = context.read_text()
-          text = text.replace(
-              '            /// Hostname-first address for HTTP URLs (e.g. sub1.target.htb); falls back to IP.',
-              '            // Hostname-first address for HTTP URLs (e.g. sub1.target.htb); falls back to IP.',
-              1,
-          )
-          text = text.replace(
-              '            /// Root domain for vhost/subdomain fuzz (e.g. target.htb). Override with -v vhost_root=...',
-              '            // Root domain for vhost/subdomain fuzz (e.g. target.htb). Override with -v vhost_root=...',
-              1,
-          )
+          first = '            /// Hostname-first address for HTTP URLs (e.g. sub1.target.htb); falls back to IP.'
+          second = '            /// Root domain for vhost/subdomain fuzz (e.g. target.htb). Override with -v vhost_root=...'
+          if first not in text or second not in text:
+              raise SystemExit('render context comment markers not found')
+          text = text.replace(first, first.replace('///', '//', 1), 1)
+          text = text.replace(second, second.replace('///', '//', 1), 1)
           context.write_text(text)
-
-          workflow = Path('.github/workflows/hardening-bootstrap.yml').read_text()
-          match = re.search(
-              r"          HARDENING_PAYLOAD: >-\n((?:            [A-Za-z0-9+/=]+\n)+)",
-              workflow,
-          )
-          if match is None:
-              raise SystemExit('hardening payload not found')
-          payload = ''.join(line.strip() for line in match.group(1).splitlines())
-          script = gzip.decompress(base64.b64decode(payload)).decode()
-          script = script.replace("r'''\\\n", "r'''")
-          script = script.replace(
-              "    phase_context_safety()\n    phase_secrets()\n    phase_jobs()\n",
-              "",
-              1,
-          )
-          script = script.replace(
-              'run("cargo", "check")',
-              'print("cargo check deferred to exact-head CI")',
-          )
-          script = script.replace(
-              '    validate_and_push()\n',
-              '    run("git", "push", "origin", "HEAD:fix/trust-and-reliability-v1")\n',
-              1,
-          )
-          Path('.github/chronosphere_hardening.py').write_text(script)
           PY
-
           git add src/ui/modals/job_log.rs src/render/context.rs
           git commit -m "fix: close job status compile gaps"
-
-          set +e
-          python3 .github/chronosphere_hardening.py > /tmp/hardening.log 2>&1
-          status=$?
-          set -e
-          if [ "$status" -ne 0 ]; then
-            tail -n 180 /tmp/hardening.log > .github/HARDENING_FAILURE.txt
-            git add .github/HARDENING_FAILURE.txt
-            if ! git diff --cached --quiet; then
-              git commit -m "chore: record hardening failure"
-            fi
-            git push origin HEAD:fix/trust-and-reliability-v1
-            exit "$status"
-          fi
-          tail -n 40 /tmp/hardening.log
+          git push origin HEAD:fix/trust-and-reliability-v1
