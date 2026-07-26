@@ -658,11 +658,19 @@ alias chronosphere='{bin}'
                 &id,
                 &vars,
             )?;
-            if dry_run {
-                println!("{}", resolved);
-                return Ok(true);
-            }
-            run_with_history(&root, cli.engagement.as_deref(), &id, &resolved).await?;
+if dry_run {
+    println!("{}", resolved);
+    return Ok(true);
+}
+let unresolved = crate::render::find_unresolved(&resolved);
+if !unresolved.is_empty() {
+    bail!(
+        "command '{}' has unresolved placeholders: {}",
+        id,
+        unresolved.join(", ")
+    );
+}
+run_with_history(&root, cli.engagement.as_deref(), &id, &resolved).await?;
             Ok(true)
         }
         Command::Targets(c) => {

@@ -18,33 +18,34 @@
 use super::context::RenderContext;
 
 pub fn evaluate(expr: &str, ctx: &RenderContext) -> bool {
-    let tokens = match tokenize(expr) {
-        Ok(t) => t,
+    match parse(expr) {
+        Ok(node) => node.eval(ctx),
         Err(err) => {
-            tracing::warn!(?err, "when-condition tokenize failed; treating as true");
-            return true;
-        }
-    };
-    let mut parser = Parser {
-        tokens: &tokens,
-        idx: 0,
-    };
-    match parser.parse_expr() {
-        Ok(node) => {
-            if parser.idx != tokens.len() {
-                tracing::warn!(rest = ?&tokens[parser.idx..], "trailing tokens in when; treating as true");
-                return true;
-            }
-            node.eval(ctx)
-        }
-        Err(err) => {
-            tracing::warn!(?err, "when-condition parse failed; treating as true");
-            true
+            tracing::warn!(?err, expression = expr, "invalid when-condition; treating as false");
+            false
         }
     }
 }
 
+pub fn validate(expr: &str) -> Result<(), String> {
+    parse(expr).map(|_| ())
+}
+
+fn parse(expr: &str) -> Result<Node, String> {
+    let tokens = tokenize(expr)?;
+    let mut parser = Parser {
+        tokens: &tokens,
+        idx: 0,
+    };
+    let node = parser.parse_expr()?;
+    if parser.idx != tokens.len() {
+        return Err(format!("trailing tokens: {:?}", &tokens[parser.idx..]));
+    }
+    Ok(node)
+}
+
 #[derive(Debug, PartialEq, Eq)]
+
 enum Tok {
     Ident(String),
     Str(String),
@@ -96,7 +97,15 @@ fn tokenize(s: &str) -> Result<Vec<Tok>, String> {
                 out.push(Tok::Eq);
                 i += 2;
             }
-            '!' if i + 1 < bytes.len() && bytes[i + 1] as char == '=' => {
+'&' if i + 1 < bytes.len() && bytes[i + 1] as char == '&' => {
+    out.push(Tok::And);
+    i += 2;
+}
+'|' if i + 1 < bytes.len() && bytes[i + 1] as char == '|' => {
+    out.push(Tok::Or);
+    i += 2;
+}
+'!' if i + 1 < bytes.len() && bytes[i + 1] as char == '=' => {
                 out.push(Tok::Neq);
                 i += 2;
             }
@@ -334,7 +343,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_errors_fail_open() {
-        assert!(evaluate("blah blah blah", &ctx_with(CredKind::Plaintext, false)));
+    fn parse_errors_fail_closed() {
+        assert!(!evaluate("blah blah blah", &ctx_with(CredKind::Plaintext, false)));
     }
 }

@@ -74,8 +74,15 @@ Self {
 
     /// Spawn a command. Non-interactive → tmux new-window detached + tee to log. Interactive →
     /// either a foreground tmux window (if we're inside tmux) or an external terminal.
-    pub fn spawn(&self, req: SpawnRequest) -> Result<JobRecord> {
-        let id = Uuid::new_v4().to_string();
+pub fn spawn(&self, req: SpawnRequest) -> Result<JobRecord> {
+    let unresolved = crate::render::find_unresolved(&req.resolved);
+    if !unresolved.is_empty() {
+        anyhow::bail!(
+            "command has unresolved placeholders: {}",
+            unresolved.join(", ")
+        );
+    }
+    let id = Uuid::new_v4().to_string();
         let log_path = self.jobs_dir.join(format!("{}.log", id));
         let status_path = self.jobs_dir.join(format!("{}.status", id));
         let _ = crate::security::create_private_file(&log_path)?;

@@ -2,7 +2,7 @@ pub mod schema;
 
 pub use schema::{CategoryFile, CommandEntry, CommandVariant};
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, bail};
 use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -35,12 +35,9 @@ impl CommandLibrary {
                 }
                 let p = entry.path();
                 if p.extension().map(|e| e == "toml").unwrap_or(false) {
-                    match load_file(p) {
-                        Ok(file) => merge_into(&mut cats, file, p.to_path_buf()),
-                        Err(err) => {
-                            tracing::error!(?err, file = %p.display(), "failed to load category");
-                        }
-                    }
+let file = load_file(p)?;
+validate_file(&file, p)?;
+merge_into(&mut cats, file, p.to_path_buf());
                 }
             }
         }
@@ -63,6 +60,58 @@ impl CommandLibrary {
         }
         s
     }
+}
+
+
+fn validate_file(file: &CategoryFile, path: &Path) -> Result<()> {
+    let mut ids = HashSet::new();
+    for command in &file.command {
+        if command.id.trim().is_empty() {
+            bail!("{} contains an empty command id", path.display());
+        }
+        if !ids.insert(command.id.as_str()) {
+            bail!("{} contains duplicate command id '{}'", path.display(), command.id);
+        }
+        if command.title.trim().is_empty() || command.template.trim().is_empty() {
+            bail!("{} command '{}' has an empty title or template", path.display(), command.id);
+        }
+        if !matches!(command.execution.as_str(), "" | "local" | "remote" | "any") {
+            bail!(
+                "{} command '{}' has invalid execution mode '{}'",
+                path.display(),
+                command.id,
+                command.execution
+            );
+        }
+        if let Some(condition) = &command.when {
+            crate::render::condition::validate(condition).map_err(|err| {
+                anyhow::anyhow!(
+                    "{} command '{}' has invalid condition '{}': {}",
+                    path.display(),
+                    command.id,
+                    condition,
+                    err
+                )
+            })?;
+        }
+        for variant in &command.variants {
+            if variant.template.trim().is_empty() {
+                bail!("{} command '{}' has an empty variant", path.display(), command.id);
+            }
+            if let Some(condition) = &variant.when {
+                crate::render::condition::validate(condition).map_err(|err| {
+                    anyhow::anyhow!(
+                        "{} command '{}' has invalid variant condition '{}': {}",
+                        path.display(),
+                        command.id,
+                        condition,
+                        err
+                    )
+                })?;
+            }
+        }
+    }
+    Ok(())
 }
 
 fn load_file(path: &Path) -> Result<CategoryFile> {
