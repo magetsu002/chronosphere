@@ -12,36 +12,40 @@
 //! string_lit := "'" non-quote-chars "'"
 //! ```
 //!
-//! Anything we can't parse evaluates to `true` (fail-open) so that a typo doesn't hide commands;
-//! the parser error is logged but doesn't crash rendering.
+//! Invalid expressions evaluate to `false` (fail-closed) so a typo cannot expose a command
+//! outside its intended context. The parser error is logged without crashing rendering.
 
 use super::context::RenderContext;
 
 pub fn evaluate(expr: &str, ctx: &RenderContext) -> bool {
-    let tokens = match tokenize(expr) {
-        Ok(t) => t,
+    match parse(expr) {
+        Ok(node) => node.eval(ctx),
         Err(err) => {
-            tracing::warn!(?err, "when-condition tokenize failed; treating as true");
-            return true;
+            tracing::warn!(
+                ?err,
+                expression = expr,
+                "invalid when-condition; treating as false"
+            );
+            false
         }
-    };
+    }
+}
+
+pub fn validate(expr: &str) -> Result<(), String> {
+    parse(expr).map(|_| ())
+}
+
+fn parse(expr: &str) -> Result<Node, String> {
+    let tokens = tokenize(expr)?;
     let mut parser = Parser {
         tokens: &tokens,
         idx: 0,
     };
-    match parser.parse_expr() {
-        Ok(node) => {
-            if parser.idx != tokens.len() {
-                tracing::warn!(rest = ?&tokens[parser.idx..], "trailing tokens in when; treating as true");
-                return true;
-            }
-            node.eval(ctx)
-        }
-        Err(err) => {
-            tracing::warn!(?err, "when-condition parse failed; treating as true");
-            true
-        }
+    let node = parser.parse_expr()?;
+    if parser.idx != tokens.len() {
+        return Err(format!("trailing tokens: {:?}", &tokens[parser.idx..]));
     }
+    Ok(node)
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -94,6 +98,14 @@ fn tokenize(s: &str) -> Result<Vec<Tok>, String> {
             }
             '=' if i + 1 < bytes.len() && bytes[i + 1] as char == '=' => {
                 out.push(Tok::Eq);
+                i += 2;
+            }
+            '&' if i + 1 < bytes.len() && bytes[i + 1] as char == '&' => {
+                out.push(Tok::And);
+                i += 2;
+            }
+            '|' if i + 1 < bytes.len() && bytes[i + 1] as char == '|' => {
+                out.push(Tok::Or);
                 i += 2;
             }
             '!' if i + 1 < bytes.len() && bytes[i + 1] as char == '=' => {
@@ -330,8 +342,8 @@ mod tests {
     }
 
     #[test]
-    fn parse_errors_fail_open() {
-        assert!(evaluate(
+    fn parse_errors_fail_closed() {
+        assert!(!evaluate(
             "blah blah blah",
             &ctx_with(CredKind::Plaintext, false)
         ));
