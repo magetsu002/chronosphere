@@ -13,10 +13,17 @@ pub fn render(f: &mut Frame, area: Rect, app: &App, hit: &mut ListRegion) {
     hit.panel = area;
     hit.list_inner = ListRegion::block_inner(area);
     let is_focused = app.focus == Focus::Jobs;
-    let border_style = if is_focused { Theme::border_active() } else { Theme::border() };
+    let border_style = if is_focused {
+        Theme::border_active()
+    } else {
+        Theme::border()
+    };
 
     let title = if is_focused {
-        format!(" jobs ({} running) — Enter/L log ", app.jobs_running_count())
+        format!(
+            " jobs ({} running) — Enter/L log ",
+            app.jobs_running_count()
+        )
     } else {
         format!(" jobs ({} running) ", app.jobs_running_count())
     };
@@ -35,11 +42,13 @@ pub fn render(f: &mut Frame, area: Rect, app: &App, hit: &mut ListRegion) {
                 JobStatus::Running => ("●", Theme::accent()),
                 JobStatus::Completed => ("✓", Theme::success()),
                 JobStatus::Failed => ("✗", Theme::error()),
+                JobStatus::Cancelled => ("■", Theme::warn()),
+                JobStatus::TimedOut => ("⌛", Theme::warn()),
                 JobStatus::Killed => ("✗", Theme::warn()),
                 JobStatus::Unknown => ("?", Theme::muted()),
             };
             let elapsed = match job.finished_at {
-                Some(f) => f - job.started_at,
+                Some(finished) => finished - job.started_at,
                 None => Utc::now() - job.started_at,
             };
             let elapsed_str = format_duration(elapsed.num_seconds());

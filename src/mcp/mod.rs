@@ -50,7 +50,7 @@ pub async fn serve(opts: ServerOpts) -> Result<()> {
         let req: Request = match serde_json::from_str(trimmed) {
             Ok(r) => r,
             Err(err) => {
-                tracing::warn!(?err, raw = %trimmed, "mcp: malformed request");
+                tracing::warn!(?err, bytes = trimmed.len(), "mcp: malformed request");
                 continue;
             }
         };
@@ -91,7 +91,12 @@ async fn handle_request(req: Request, state: Arc<Mutex<tools::State>>) -> Respon
                     return Response::error(id, -32602, format!("invalid params: {}", e));
                 }
             };
-            tools::dispatch(&params.name, params.arguments.unwrap_or(serde_json::json!({})), state).await
+            tools::dispatch(
+                &params.name,
+                params.arguments.unwrap_or(serde_json::json!({})),
+                state,
+            )
+            .await
         }
         // Cursor / Claude sometimes probe these; respond with empty rather than erroring.
         "resources/list" => Ok(serde_json::json!({"resources": []})),

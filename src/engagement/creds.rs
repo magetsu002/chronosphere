@@ -74,11 +74,7 @@ impl ProfileStore {
 
     pub fn save(&self, path: &Path) -> Result<()> {
         let s = serde_json::to_string_pretty(self).context("serialize profiles")?;
-        if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent).ok();
-        }
-        fs::write(path, s).with_context(|| format!("write {}", path.display()))?;
-        Ok(())
+        crate::security::write_private_atomic(path, s.as_bytes())
     }
 
     pub fn upsert(&mut self, profile: CredentialProfile) {

@@ -2,7 +2,10 @@
 name = "chronosphere"
 version = "0.2.1"
 edition = "2024"
+rust-version = "1.88"
 description = "Vim-flavored TUI for browsing, templating, and firing pentest commands from a per-engagement project directory."
+repository = "https://github.com/magetsu002/chronosphere"
+readme = "README.md"
 
 [dependencies]
 ratatui = "0.29"
@@ -33,6 +36,7 @@ include_dir = "0.7"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "gzip", "json"] }
 rusqlite = { version = "0.32", features = ["bundled"] }
 flate2 = "1"
+rpassword = "7"
 
 [profile.release]
 lto = "thin"

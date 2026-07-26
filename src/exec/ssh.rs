@@ -173,29 +173,46 @@ impl SshConn {
         v
     }
 
-    fn wrap_prog(&self, prog: &str, args: &[String]) -> String {
-        let mut cmd = String::new();
-        if let Some(pw) = &self.password {
-            cmd.push_str("sshpass -p ");
-            cmd.push_str(&shell_escape(pw));
-            cmd.push(' ');
+    fn wrap_prog(
+        &self,
+        prog: &str,
+        args: &[String],
+        password_file: Option<&Path>,
+    ) -> Result<String> {
+        let mut command = String::new();
+        if self.password.is_some() {
+            let Some(password_file) = password_file else {
+                bail!("password-backed SSH wrapper requires a private password file");
+            };
+            command.push_str("sshpass -f ");
+            command.push_str(&shell_escape(password_file.to_string_lossy().as_ref()));
+            command.push(' ');
         }
-        cmd.push_str(prog);
-        for a in args {
-            cmd.push(' ');
-            cmd.push_str(&shell_escape(a));
+        command.push_str(prog);
+        for argument in args {
+            command.push(' ');
+            command.push_str(&shell_escape(argument));
         }
-        cmd
+        Ok(command)
     }
 
     pub fn scp_to_remote(&self, local: &Path, remote_path: &str) -> Result<()> {
-        let mut args = self.base_scp_args();
-        args.push(local.to_string_lossy().into_owned());
-        args.push(format!("{}:{}", self.target, remote_path));
-        let shell = self.wrap_prog("scp", &args);
-        let status = Command::new("bash")
-            .arg("-lc")
-            .arg(&shell)
+        let mut command = if let Some(password) = &self.password {
+            ensure_sshpass()?;
+            let mut command = Command::new("sshpass");
+            command.arg("-e").arg("scp");
+            command.env("SSHPASS", password);
+            command
+        } else {
+            Command::new("scp")
+        };
+        for argument in self.base_scp_args() {
+            command.arg(argument);
+        }
+        command
+            .arg(local)
+            .arg(format!("{}:{}", self.target, remote_path));
+        let status = command
             .status()
             .with_context(|| format!("scp to {}", remote_path))?;
         if !status.success() {
@@ -211,8 +228,13 @@ impl SshConn {
         remote_script: &str,
         log_path: &str,
         status_path: &str,
+        password_file: Option<&Path>,
         interactive: bool,
-    ) -> String {
+    ) -> Result<String> {
+        if self.password.is_some() && password_file.is_none() {
+            bail!("password-backed SSH wrapper requires a private password file");
+        }
+
         let log = shell_escape(log_path);
         let status = shell_escape(status_path);
         let target = shell_escape(&self.target);
@@ -220,15 +242,15 @@ impl SshConn {
         let mut scp_args = self.base_scp_args();
         scp_args.push(local_script.to_string_lossy().into_owned());
         scp_args.push(format!("{}:{}", self.target, remote_script));
-        let scp_cmd = self.wrap_prog("scp", &scp_args);
+        let scp_cmd = self.wrap_prog("scp", &scp_args, password_file)?;
 
         let remote_exec = shell_escape(&format!(
             "chmod +x {remote_script} && bash {remote_script}; ec=$?; rm -f {remote_script}; exit $ec"
         ));
-        let mut ssh_cmd = if self.password.is_some() {
+        let mut ssh_cmd = if let Some(password_file) = password_file {
             format!(
-                "sshpass -p {} ssh",
-                shell_escape(self.password.as_ref().unwrap())
+                "sshpass -f {} ssh",
+                shell_escape(password_file.to_string_lossy().as_ref())
             )
         } else {
             "ssh".into()
@@ -236,31 +258,49 @@ impl SshConn {
         if interactive {
             ssh_cmd.push_str(" -tt");
         }
-        for a in self.base_ssh_args() {
+        for argument in self.base_ssh_args() {
             ssh_cmd.push(' ');
-            ssh_cmd.push_str(&shell_escape(&a));
+            ssh_cmd.push_str(&shell_escape(&argument));
         }
         ssh_cmd.push(' ');
         ssh_cmd.push_str(&target);
         ssh_cmd.push(' ');
         ssh_cmd.push_str(&remote_exec);
 
-        if interactive {
+        let (trap, cleanup) = if let Some(password_file) = password_file {
+            let remove = format!(
+                "rm -f -- {}",
+                shell_escape(password_file.to_string_lossy().as_ref())
+            );
+            (
+                format!("trap {} EXIT INT TERM; ", shell_escape(&remove)),
+                format!("{}; trap - EXIT INT TERM", remove),
+            )
+        } else {
+            (String::new(), ":".to_string())
+        };
+
+        let command = if interactive {
             format!(
-                "{scp_cmd} && {ssh_cmd}; echo $? > {status}",
+                r#"{trap}{scp_cmd} && {ssh_cmd}; ec=$?; echo "$ec" > {status}; {cleanup}"#,
+                trap = trap,
                 scp_cmd = scp_cmd,
                 ssh_cmd = ssh_cmd,
                 status = status,
+                cleanup = cleanup,
             )
         } else {
             format!(
-                r#"{scp_cmd} && {ssh_cmd} 2>&1 | tee -a {log}; ec=${{PIPESTATUS[0]}}; echo "$ec" > {status}; echo; echo '[chronosphere] remote command finished (exit '"$ec"'). Press Up to recall.'; exec ${{SHELL:-bash}}"#,
+                r#"{trap}{scp_cmd} && {ssh_cmd} 2>&1 | tee -a {log}; ec=${{PIPESTATUS[0]}}; echo "$ec" > {status}; {cleanup}; echo; echo '[chronosphere] remote command finished (exit '"$ec"'). Press Up to recall.'; exec ${{SHELL:-bash}}"#,
+                trap = trap,
                 scp_cmd = scp_cmd,
                 ssh_cmd = ssh_cmd,
                 log = log,
                 status = status,
+                cleanup = cleanup,
             )
-        }
+        };
+        Ok(command)
     }
 }
 
@@ -329,25 +369,48 @@ impl SshDeploySession {
     }
 
     fn base_cmd(&self, prog: &str, port_flag: &str) -> Command {
-        let mut cmd = if let Some(pw) = &self.password {
-            let mut c = Command::new("sshpass");
-            c.arg("-p").arg(pw).arg(prog);
-            c
+        let mut command = if let Some(password) = &self.password {
+            let mut command = Command::new("sshpass");
+            command.arg("-e").arg(prog);
+            command.env("SSHPASS", password);
+            command
         } else {
             Command::new(prog)
         };
-        cmd.arg(port_flag).arg(self.port.to_string());
-        cmd.arg("-o").arg("StrictHostKeyChecking=accept-new");
-        if let Some(id) = &self.identity {
-            cmd.arg("-i").arg(id);
+        command.arg(port_flag).arg(self.port.to_string());
+        command.arg("-o").arg("StrictHostKeyChecking=accept-new");
+        if let Some(identity) = &self.identity {
+            command.arg("-i").arg(identity);
         }
-        cmd
+        command
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn deploy_session_keeps_password_out_of_arguments() {
+        let session = SshDeploySession {
+            port: 2222,
+            identity: None,
+            password: Some("s3cret".into()),
+        };
+        let command = session.base_cmd("ssh", "-p");
+        let args: Vec<String> = command
+            .get_args()
+            .map(|arg| arg.to_string_lossy().into_owned())
+            .collect();
+        assert!(!args.iter().any(|arg| arg == "s3cret"));
+        assert_eq!(args.first().map(String::as_str), Some("-e"));
+        let password = command
+            .get_envs()
+            .find(|(key, _)| key.to_string_lossy() == "SSHPASS")
+            .and_then(|(_, value)| value)
+            .map(|value| value.to_string_lossy().into_owned());
+        assert_eq!(password.as_deref(), Some("s3cret"));
+    }
 
     #[test]
     fn remote_wrapper_contains_scp_and_ssh() {
@@ -358,13 +421,16 @@ mod tests {
             password: None,
             control_path: PathBuf::from("/tmp/cm-test"),
         };
-        let w = conn.remote_script_wrapper(
-            Path::new("/tmp/a.sh"),
-            "/tmp/chrono-id.sh",
-            "/tmp/id.log",
-            "/tmp/id.status",
-            false,
-        );
+        let w = conn
+            .remote_script_wrapper(
+                Path::new("/tmp/a.sh"),
+                "/tmp/chrono-id.sh",
+                "/tmp/id.log",
+                "/tmp/id.status",
+                None,
+                false,
+            )
+            .unwrap();
         assert!(w.contains("scp"));
         assert!(w.contains("ssh"));
         assert!(w.contains("tee"));
@@ -377,7 +443,7 @@ mod tests {
     }
 
     #[test]
-    fn remote_wrapper_uses_sshpass_when_password_set() {
+    fn remote_wrapper_uses_private_password_file() {
         let conn = SshConn {
             target: "user@10.0.0.5".into(),
             port: 22,
@@ -385,15 +451,22 @@ mod tests {
             password: Some("s3cret".into()),
             control_path: PathBuf::from("/tmp/cm-test"),
         };
-        let w = conn.remote_script_wrapper(
-            Path::new("/tmp/a.sh"),
-            "/tmp/chrono-id.sh",
-            "/tmp/id.log",
-            "/tmp/id.status",
-            false,
-        );
-        assert!(w.contains("sshpass"));
-        assert!(w.contains("s3cret"));
+        let password_file = Path::new("/tmp/chrono-sshpass-test");
+        let wrapper = conn
+            .remote_script_wrapper(
+                Path::new("/tmp/a.sh"),
+                "/tmp/chrono-id.sh",
+                "/tmp/id.log",
+                "/tmp/id.status",
+                Some(password_file),
+                false,
+            )
+            .unwrap();
+        assert!(wrapper.contains("sshpass -f"));
+        assert!(wrapper.contains("/tmp/chrono-sshpass-test"));
+        assert!(wrapper.contains("rm -f"));
+        assert!(!wrapper.contains("s3cret"));
+        assert!(!wrapper.contains("SSHPASS="));
     }
 
     #[test]
@@ -425,8 +498,10 @@ mod tests {
                 "/tmp/chrono-id.sh",
                 "/tmp/id.log",
                 "/tmp/id.status",
+                None,
                 false,
-            );
+            )
+            .unwrap();
         assert!(!w.contains("sshpass"));
         let _ = std::fs::remove_dir_all(&dir);
     }

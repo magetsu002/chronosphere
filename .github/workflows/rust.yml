@@ -2,21 +2,55 @@ name: Rust
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [main]
   pull_request:
-    branches: [ "main" ]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rust-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-
+  validate:
     runs-on: ubuntu-latest
-
+    timeout-minutes: 30
     steps:
-    - uses: actions/checkout@v4
-    - name: Build
-      run: cargo build --release --verbose
-    # - name: Run tests
-    #   run: cargo test --verbose
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.88"
+          components: rustfmt, clippy
+      - name: Formatting
+        run: cargo fmt --check
+      - name: Clippy correctness
+        id: clippy
+        shell: bash
+        run: |
+          set +e
+          cargo clippy --locked --all-targets --all-features -- -D clippy::correctness -D clippy::suspicious 2>&1 | tee clippy.log
+          status=${PIPESTATUS[0]}
+          echo "status=${status}" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Tests
+        run: cargo test --locked --all-targets
+      - name: Release build
+        run: cargo build --locked --release
+      - name: Upload validation logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-validation-logs
+          path: clippy.log
+          if-no-files-found: error
+          retention-days: 7
+      - name: Enforce Clippy result
+        if: steps.clippy.outputs.status != '0'
+        run: |
+          tail -n 200 clippy.log
+          exit 1

@@ -570,8 +570,13 @@ engagement_cli!(
 
 engagement_cli!(
     #[derive(Parser, Debug)]
-    #[command(name = "chronosphere mcp-serve", about = "Run as a Model Context Protocol server on stdio (for cursor-agent etc)", disable_version_flag = true)]
-    McpServeCli, "mcp-serve",
+    #[command(
+        name = "chronosphere mcp-serve",
+        about = "Run as a Model Context Protocol server on stdio (for cursor-agent etc)",
+        disable_version_flag = true
+    )]
+    McpServeCli,
+    "mcp-serve",
 );
 
 standalone_cli!(
@@ -595,14 +600,24 @@ standalone_cli!(
 
 standalone_cli!(
     #[derive(Parser, Debug)]
-    #[command(name = "chronosphere where", about = "Print where chronosphere stores things", disable_version_flag = true)]
-    WhereCli, "where",
+    #[command(
+        name = "chronosphere where",
+        about = "Print where chronosphere stores things",
+        disable_version_flag = true
+    )]
+    WhereCli,
+    "where",
 );
 
 standalone_cli!(
     #[derive(Parser, Debug)]
-    #[command(name = "chronosphere path-install", about = "Print an `eval $(chronosphere path-install)` snippet for shell setup", disable_version_flag = true)]
-    PathInstallCli, "path-install",
+    #[command(
+        name = "chronosphere path-install",
+        about = "Print an `eval $(chronosphere path-install)` snippet for shell setup",
+        disable_version_flag = true
+    )]
+    PathInstallCli,
+    "path-install",
 );
 
 standalone_cli!(
@@ -835,7 +850,11 @@ pub async fn try_early_dispatch() -> Result<bool> {
         }
         "doctor" => {
             let c = DoctorCli::parse_from(&argv);
-            dispatch(cli_from(c.engagement, Command::Doctor { missing: c.missing })).await?
+            dispatch(cli_from(
+                c.engagement,
+                Command::Doctor { missing: c.missing },
+            ))
+            .await?
         }
         "update-templates" => {
             let c = UpdateTemplatesCli::parse_from(&argv);
@@ -872,11 +891,7 @@ pub async fn try_early_dispatch() -> Result<bool> {
         }
         "deploy" => {
             let c = DeployCli::parse_from(&argv);
-            dispatch(cli_from(
-                EngagementOpts::default(),
-                Command::Deploy(c.args),
-            ))
-            .await?
+            dispatch(cli_from(EngagementOpts::default(), Command::Deploy(c.args))).await?
         }
         "cve" => {
             let c = CveCli::parse_from(&argv);
@@ -928,18 +943,15 @@ pub async fn dispatch(cli: Cli) -> Result<bool> {
             println!("engagements: {}", root.display());
             println!("builtins:    {}", config::builtin_commands_dir().display());
             println!("user lib:    {}", config::user_commands_dir().display());
-            println!("cve db:      {} ({})",
+            println!(
+                "cve db:      {} ({})",
                 config::cve_db_path().display(),
                 config::format_storage_size(config::cve_storage_size_bytes()),
             );
             let poc = crate::cve::PocIndex::global();
             let poc_idx = poc.root.join("index.toml");
             if poc_idx.is_file() {
-                println!(
-                    "poc root:    {} ({} ready)",
-                    poc.root.display(),
-                    poc.len()
-                );
+                println!("poc root:    {} ({} ready)", poc.root.display(), poc.len());
             } else {
                 println!(
                     "poc root:    {} (no index.toml — set CHRONO_POC_ROOT or mount ~/pocs)",
@@ -971,11 +983,21 @@ alias chronosphere='{bin}'
             crate::mcp::serve(opts).await.context("mcp serve")?;
             Ok(true)
         }
-        Command::McpConfig { ssh, port, remote_path, identity } => {
+        Command::McpConfig {
+            ssh,
+            port,
+            remote_path,
+            identity,
+        } => {
             if let Some(host) = ssh {
                 println!(
                     "{}",
-                    crate::deploy::mcp_config_ssh_snippet(&host, port, &remote_path, identity.as_deref())
+                    crate::deploy::mcp_config_ssh_snippet(
+                        &host,
+                        port,
+                        &remote_path,
+                        identity.as_deref()
+                    )
                 );
             } else {
                 let bin = std::env::current_exe()
@@ -1164,6 +1186,14 @@ alias chronosphere='{bin}'
                 println!("{}", resolved);
                 return Ok(true);
             }
+            let unresolved = crate::render::find_unresolved(&resolved);
+            if !unresolved.is_empty() {
+                bail!(
+                    "command '{}' has unresolved placeholders: {}",
+                    id,
+                    unresolved.join(", ")
+                );
+            }
             run_with_history(&root, cli.opts.engagement.as_deref(), &id, &resolved).await?;
             Ok(true)
         }
@@ -1173,7 +1203,11 @@ alias chronosphere='{bin}'
                 TargetCmd::List => {
                     let active = e.targets.active().map(|t| t.name.clone());
                     for t in &e.targets.targets {
-                        let star = if Some(&t.name) == active.as_ref() { "*" } else { " " };
+                        let star = if Some(&t.name) == active.as_ref() {
+                            "*"
+                        } else {
+                            " "
+                        };
                         println!(
                             "{} {:<14}  ip={}  host={}  dc={}",
                             star,
@@ -1184,7 +1218,15 @@ alias chronosphere='{bin}'
                         );
                     }
                 }
-                TargetCmd::Add { name, ip, hostname, dc, lhost, lport, notes } => {
+                TargetCmd::Add {
+                    name,
+                    ip,
+                    hostname,
+                    dc,
+                    lhost,
+                    lport,
+                    notes,
+                } => {
                     let activate = name.clone();
                     e.targets.upsert(Target {
                         name,
@@ -1217,7 +1259,11 @@ alias chronosphere='{bin}'
                 ApCmd::List => {
                     let active = e.aps.active().map(|a| a.name.clone());
                     for a in &e.aps.aps {
-                        let star = if Some(&a.name) == active.as_ref() { "*" } else { " " };
+                        let star = if Some(&a.name) == active.as_ref() {
+                            "*"
+                        } else {
+                            " "
+                        };
                         println!(
                             "{} {:<12}  ssid={}  bssid={}  psk={}",
                             star,
@@ -1407,7 +1453,11 @@ alias chronosphere='{bin}'
                 CredsCmd::List => {
                     let active = e.profiles.active().map(|p| p.name.clone());
                     for p in &e.profiles.profiles {
-                        let star = if Some(&p.name) == active.as_ref() { "*" } else { " " };
+                        let star = if Some(&p.name) == active.as_ref() {
+                            "*"
+                        } else {
+                            " "
+                        };
                         println!(
                             "{} {:<12} {}  ({}/{})  user={}",
                             star,
@@ -1419,13 +1469,25 @@ alias chronosphere='{bin}'
                         );
                     }
                 }
-                CredsCmd::Add { name, username, domain, kind, password, nt_hash, ticket, notes } => {
+                CredsCmd::Add {
+                    name,
+                    username,
+                    domain,
+                    kind,
+                    password,
+                    nt_hash,
+                    ticket,
+                    notes,
+                } => {
                     let kind = match kind.to_lowercase().as_str() {
                         "none" => CredKind::None,
                         "plaintext" | "pw" | "password" => CredKind::Plaintext,
                         "ntlm" | "hash" | "nt" => CredKind::Ntlm,
                         "kerberos" | "krb" => CredKind::Kerberos,
-                        other => bail!("unknown cred kind '{}' (none|plaintext|ntlm|kerberos)", other),
+                        other => bail!(
+                            "unknown cred kind '{}' (none|plaintext|ntlm|kerberos)",
+                            other
+                        ),
                     };
                     let activate = name.clone();
                     e.profiles.upsert(CredentialProfile {
@@ -1462,7 +1524,10 @@ alias chronosphere='{bin}'
 }
 
 async fn dispatch_cve(cmd: CveCmd) -> Result<()> {
-    use crate::cve::{CveFilter, SyncOptions, fetch_one, parse_month, parse_since_days, parse_years, search, show, status, sync};
+    use crate::cve::{
+        CveFilter, SyncOptions, fetch_one, parse_month, parse_since_days, parse_years, search,
+        show, status, sync,
+    };
 
     match cmd {
         CveCmd::Sync {
@@ -1477,9 +1542,7 @@ async fn dispatch_cve(cmd: CveCmd) -> Result<()> {
             if full && month.is_some() {
                 bail!("--full and --month are mutually exclusive");
             }
-            let month = month
-                .map(|m| parse_month(&m, by_modified))
-                .transpose()?;
+            let month = month.map(|m| parse_month(&m, by_modified)).transpose()?;
             let years = years
                 .map(|y| parse_years(&y))
                 .transpose()?
@@ -1502,12 +1565,10 @@ async fn dispatch_cve(cmd: CveCmd) -> Result<()> {
                 eprintln!("warning: {err}");
             }
         }
-        CveCmd::Fetch { cve_id, enrich } => {
-            match fetch_one(&cve_id, enrich).await? {
-                Some(rec) => print_cve_record(&rec, false),
-                None => bail!("CVE not found: {cve_id}"),
-            }
-        }
+        CveCmd::Fetch { cve_id, enrich } => match fetch_one(&cve_id, enrich).await? {
+            Some(rec) => print_cve_record(&rec, false),
+            None => bail!("CVE not found: {cve_id}"),
+        },
         CveCmd::Search {
             query,
             product,
@@ -1522,9 +1583,7 @@ async fn dispatch_cve(cmd: CveCmd) -> Result<()> {
             limit,
             json,
         } => {
-            let since_days = since
-                .map(|s| parse_since_days(&s))
-                .transpose()?;
+            let since_days = since.map(|s| parse_since_days(&s)).transpose()?;
             let filter = CveFilter {
                 query,
                 product,
@@ -1550,22 +1609,26 @@ async fn dispatch_cve(cmd: CveCmd) -> Result<()> {
                 }
             }
         }
-        CveCmd::Show { cve_id, json } => {
-            match show(&cve_id)? {
-                Some(rec) => {
-                    if json {
-                        println!("{}", serde_json::to_string_pretty(&rec)?);
-                    } else {
-                        print_cve_record(&rec, true);
-                    }
+        CveCmd::Show { cve_id, json } => match show(&cve_id)? {
+            Some(rec) => {
+                if json {
+                    println!("{}", serde_json::to_string_pretty(&rec)?);
+                } else {
+                    print_cve_record(&rec, true);
                 }
-                None => bail!("CVE not in local index: {cve_id} (try: chronosphere cve fetch {cve_id})"),
             }
-        }
+            None => {
+                bail!("CVE not in local index: {cve_id} (try: chronosphere cve fetch {cve_id})")
+            }
+        },
         CveCmd::Status => {
             let st = status()?;
             println!("database:  {}", st.db_path);
-            println!("size:      {} ({} bytes)", config::format_storage_size(st.db_size_bytes), st.db_size_bytes);
+            println!(
+                "size:      {} ({} bytes)",
+                config::format_storage_size(st.db_size_bytes),
+                st.db_size_bytes
+            );
             println!("total:     {}", st.total);
             println!("kev:       {}", st.kev_count);
             if let Some(t) = st.last_sync {
@@ -1641,7 +1704,10 @@ fn print_cve_record(rec: &crate::cve::CveRecord, verbose: bool) {
         }
     }
     if !rec.sources.is_empty() {
-        println!("  sources:   {}", rec.sources.iter().cloned().collect::<Vec<_>>().join(", "));
+        println!(
+            "  sources:   {}",
+            rec.sources.iter().cloned().collect::<Vec<_>>().join(", ")
+        );
     }
     println!("  description:");
     for line in rec.description.lines().take(8) {
@@ -1669,6 +1735,7 @@ fn print_cve_record(rec: &crate::cve::CveRecord, verbose: bool) {
 fn library_sources(root: &Path, engagement: Option<&str>) -> Result<Vec<PathBuf>> {
     let mut v = vec![config::builtin_commands_dir()];
     if let Some(name) = engagement {
+        Engagement::validate_name(name)?;
         let dir = root.join(name);
         if dir.exists() {
             let overrides = Engagement::overrides_dir(&dir);
@@ -1693,7 +1760,10 @@ fn open_engagement(root: &Path, name: Option<&str>) -> Result<Engagement> {
             if candidates.len() == 1 {
                 candidates.into_iter().next().unwrap()
             } else if candidates.is_empty() {
-                bail!("no engagement found in {} (create one with `chronosphere new <name>`)", root.display())
+                bail!(
+                    "no engagement found in {} (create one with `chronosphere new <name>`)",
+                    root.display()
+                )
             } else {
                 bail!(
                     "ambiguous engagement (use -e to pick): {}",
@@ -1702,49 +1772,74 @@ fn open_engagement(root: &Path, name: Option<&str>) -> Result<Engagement> {
             }
         }
     };
-    Engagement::load(root.join(&pick)).with_context(|| format!("load engagement {}", pick))
+    Engagement::load_named(root, &pick).with_context(|| format!("load engagement {}", pick))
 }
 
 fn build_context(
-    e: &Engagement,
+    engagement: &Engagement,
     target_override: &Option<String>,
     ap_override: &Option<String>,
     cred_override: &Option<String>,
     extra_vars: &[String],
-) -> RenderContext {
+) -> Result<RenderContext> {
     let mut ctx = RenderContext::default();
-    let active_t = target_override
-        .as_deref()
-        .and_then(|n| e.targets.targets.iter().find(|t| t.name == n))
-        .or_else(|| e.targets.active());
-    if let Some(t) = active_t {
-        ctx.target = Some(t.clone());
+    let target = match target_override.as_deref() {
+        Some(name) => Some(
+            engagement
+                .targets
+                .targets
+                .iter()
+                .find(|target| target.name == name)
+                .ok_or_else(|| anyhow!("no target named {}", name))?,
+        ),
+        None => engagement.targets.active(),
+    };
+    if let Some(target) = target {
+        ctx.target = Some(target.clone());
     }
-    let active_ap = ap_override
-        .as_deref()
-        .and_then(|n| e.aps.aps.iter().find(|a| a.name == n))
-        .or_else(|| e.aps.active());
-    if let Some(a) = active_ap {
-        ctx.ap = Some(a.clone());
+
+    let ap = match ap_override.as_deref() {
+        Some(name) => Some(
+            engagement
+                .aps
+                .aps
+                .iter()
+                .find(|ap| ap.name == name)
+                .ok_or_else(|| anyhow!("no access point named {}", name))?,
+        ),
+        None => engagement.aps.active(),
+    };
+    if let Some(ap) = ap {
+        ctx.ap = Some(ap.clone());
     }
-    let active_p = cred_override
-        .as_deref()
-        .and_then(|n| e.profiles.profiles.iter().find(|p| p.name == n))
-        .or_else(|| e.profiles.active());
-    if let Some(p) = active_p {
-        ctx.profile = Some(p.clone());
+
+    let profile = match cred_override.as_deref() {
+        Some(name) => Some(
+            engagement
+                .profiles
+                .profiles
+                .iter()
+                .find(|profile| profile.name == name)
+                .ok_or_else(|| anyhow!("no credential profile named {}", name))?,
+        ),
+        None => engagement.profiles.active(),
+    };
+    if let Some(profile) = profile {
+        ctx.profile = Some(profile.clone());
     }
-    ctx.pivot_tunnel = e.pivots.active_tunnel().cloned();
-    ctx.pivot_remote = e.pivots.active_remote().cloned();
-    ctx.execution_mode = e.pivots.execution_mode;
-    ctx.engagement_dir = Some(e.dir.clone());
-    ctx.globals = e.variables.values.clone();
-    for kv in extra_vars {
-        if let Some((k, v)) = kv.split_once('=') {
-            ctx.globals.insert(k.trim().to_string(), v.to_string());
+
+    ctx.pivot_tunnel = engagement.pivots.active_tunnel().cloned();
+    ctx.pivot_remote = engagement.pivots.active_remote().cloned();
+    ctx.execution_mode = engagement.pivots.execution_mode;
+    ctx.engagement_dir = Some(engagement.dir.clone());
+    ctx.globals = engagement.variables.values.clone();
+    for value in extra_vars {
+        if let Some((key, value)) = value.split_once('=') {
+            ctx.globals
+                .insert(key.trim().to_string(), value.to_string());
         }
     }
-    ctx
+    Ok(ctx)
 }
 
 fn resolve(
@@ -1765,13 +1860,7 @@ fn resolve(
         .flat_map(|c| c.commands.iter())
         .find(|c| c.id == id)
         .ok_or_else(|| anyhow!("command id '{}' not found", id))?;
-    let ctx = build_context(
-        &e,
-        target_override,
-        ap_override,
-        cred_override,
-        extra_vars,
-    );
+    let ctx = build_context(&e, target_override, ap_override, cred_override, extra_vars)?;
     let tmpl = cmd.applicable_template(&|w| crate::render::condition::evaluate(w, &ctx));
     let result = render::render(tmpl, &ctx)?;
     Ok(result.resolved)
@@ -1793,8 +1882,15 @@ fn print_variables(e: &Engagement, lib: &CommandLibrary, unset_only: bool) {
             continue;
         }
         let status = if is_set { "set" } else { "unset" };
-        let val = value.filter(|v| !v.is_empty()).map(|s| s.as_str()).unwrap_or("-");
-        let tag = if library.contains(&name) { "" } else { " (custom)" };
+        let val = value
+            .filter(|v| !v.is_empty())
+            .map(|s| s.as_str())
+            .unwrap_or("-");
+        let tag = if library.contains(&name) {
+            ""
+        } else {
+            " (custom)"
+        };
         println!("{:<8}  {:<20}  {}{}", status, name, val, tag);
     }
 }
@@ -1842,7 +1938,8 @@ async fn run_with_history(
     let job_id = format!("{}", uuid::Uuid::new_v4());
     let log_path = Engagement::jobs_dir(&e.dir).join(format!("{job_id}.log"));
     fs::create_dir_all(Engagement::jobs_dir(&e.dir)).ok();
-    eprintln!("[chrono] $ {}", resolved);
+    let redacted = crate::security::redact_for_engagement(resolved, &e);
+    eprintln!("[chrono] $ {}", redacted);
     let status = Command::new("bash")
         .arg("-lc")
         .arg(resolved)
@@ -1854,7 +1951,7 @@ async fn run_with_history(
         id: job_id,
         command_id: Some(id.to_string()),
         command_title: id.to_string(),
-        resolved: resolved.to_string(),
+        resolved: redacted,
         target,
         profile,
         ap,

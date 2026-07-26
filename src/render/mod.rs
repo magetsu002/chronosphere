@@ -22,6 +22,31 @@ pub fn render(template: &str, ctx: &RenderContext) -> Result<RenderResult> {
     })
 }
 
+pub fn find_unresolved(text: &str) -> Vec<String> {
+    let mut names = Vec::new();
+    let bytes = text.as_bytes();
+    let mut index = 0;
+    while index < bytes.len() {
+        if bytes[index] as char == '{' && (index == 0 || bytes[index - 1] as char != '$') {
+            if let Some(end) = text[index + 1..].find('}') {
+                let name = &text[index + 1..index + 1 + end];
+                if !name.is_empty()
+                    && name
+                        .chars()
+                        .all(|ch| ch.is_ascii_alphanumeric() || ch == '_')
+                    && !names.iter().any(|existing| existing == name)
+                {
+                    names.push(name.to_string());
+                }
+                index += end + 2;
+                continue;
+            }
+        }
+        index += 1;
+    }
+    names
+}
+
 struct PlaceholderPass {
     text: String,
     unresolved: Vec<String>,
@@ -90,7 +115,9 @@ fn expand_placeholders(template: &str, ctx: &RenderContext) -> PlaceholderPass {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::engagement::{AccessPoint, CredKind, CredentialProfile, ExecutionMode, Pivot, Target};
+    use crate::engagement::{
+        AccessPoint, CredKind, CredentialProfile, ExecutionMode, Pivot, Target,
+    };
     use std::path::PathBuf;
 
     fn ctx() -> RenderContext {

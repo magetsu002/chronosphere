@@ -1,7 +1,7 @@
 //! Remote execution via scp script upload + ssh run on an active pivot.
 
 use crate::engagement::Pivot;
-use crate::exec::ssh::{remote_script_path, write_remote_script, SshConn};
+use crate::exec::ssh::{SshConn, remote_script_path, write_remote_script};
 use anyhow::Result;
 use std::path::Path;
 
@@ -20,13 +20,25 @@ pub fn wrap_for_remote(
     let local_script = jobs_dir.join(format!("{}.remote.sh", job_id));
     write_remote_script(&local_script, user_command)?;
     let remote_script = remote_script_path(job_id);
-    Ok(conn.remote_script_wrapper(
+    let password_file = if let Some(password) = conn.password.as_deref() {
+        let path = jobs_dir.join(format!("{}.sshpass", job_id));
+        let contents = format!(
+            "{password}
+"
+        );
+        crate::security::write_private_atomic(&path, contents.as_bytes())?;
+        Some(path)
+    } else {
+        None
+    };
+    conn.remote_script_wrapper(
         &local_script,
         &remote_script,
         log_path,
         status_path,
+        password_file.as_deref(),
         interactive,
-    ))
+    )
 }
 
 #[cfg(test)]

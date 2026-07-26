@@ -39,9 +39,7 @@ impl RenderContext {
             "pivot_name" => self.pivot_key_slug(),
             "target_name" => self.target.as_ref().map(|t| t.name.clone()),
             "pivot_ssh_key" => self.pivot_ssh_key_path(),
-            "pivot_ssh_key_pub" => self
-                .pivot_ssh_key_path()
-                .map(|k| format!("{k}.pub")),
+            "pivot_ssh_key_pub" => self.pivot_ssh_key_path().map(|k| format!("{k}.pub")),
             "engagement_dir" => self
                 .engagement_dir
                 .as_ref()
@@ -74,11 +72,11 @@ impl RenderContext {
                 .and_then(|t| t.ip.clone().or_else(|| t.hostname.clone())),
             "ip" => self.target.as_ref().and_then(|t| t.ip.clone()),
             "hostname" => self.target.as_ref().and_then(|t| t.hostname.clone()),
-            /// Hostname-first address for HTTP URLs (e.g. sub1.target.htb); falls back to IP.
+            // Hostname-first address for HTTP URLs (e.g. sub1.target.htb); falls back to IP.
             "web_host" => self.web_host(),
             "web_base" => self.web_base(false),
             "web_base_https" => self.web_base(true),
-            /// Root domain for vhost/subdomain fuzz (e.g. target.htb). Override with -v vhost_root=...
+            // Root domain for vhost/subdomain fuzz (e.g. target.htb). Override with -v vhost_root=...
             "vhost_root" => self.vhost_root(),
             "dc" => self.target.as_ref().and_then(|t| t.dc_name.clone()),
             "dc_fqdn" => self.dc_fqdn(),
@@ -245,7 +243,12 @@ impl RenderContext {
     /// Boolean atom lookup used by the `when` evaluator.
     pub fn lookup_bool(&self, dotted: &str) -> Option<bool> {
         match dotted {
-            "target.has_dc" => Some(self.target.as_ref().and_then(|t| t.dc_name.clone()).is_some()),
+            "target.has_dc" => Some(
+                self.target
+                    .as_ref()
+                    .and_then(|t| t.dc_name.clone())
+                    .is_some(),
+            ),
             "target.has_ip" => Some(self.target.as_ref().and_then(|t| t.ip.clone()).is_some()),
             "target.has_hostname" => Some(
                 self.target
@@ -253,30 +256,33 @@ impl RenderContext {
                     .and_then(|t| t.hostname.clone())
                     .is_some(),
             ),
-            "target.has_lhost" => Some(self.target.as_ref().and_then(|t| t.lhost.clone()).is_some()),
+            "target.has_lhost" => {
+                Some(self.target.as_ref().and_then(|t| t.lhost.clone()).is_some())
+            }
             "ap.has_ssid" => Some(self.ap.as_ref().and_then(|a| a.ssid.clone()).is_some()),
             "ap.has_bssid" => Some(self.ap.as_ref().and_then(|a| a.bssid.clone()).is_some()),
             "ap.has_wpa_psk" => Some(self.ap.as_ref().and_then(|a| a.wpa_psk.clone()).is_some()),
             "tunnel.active" => Some(self.pivot_tunnel.is_some()),
             "execution.remote" => Some(self.execution_mode == ExecutionMode::Remote),
             "pivot.has_ssh" => Some(
-                self.pivot_remote
-                    .as_ref()
-                    .is_some_and(|p| p.has_ssh())
-                    || self
-                        .pivot_tunnel
-                        .as_ref()
-                        .is_some_and(|p| p.has_ssh()),
+                self.pivot_remote.as_ref().is_some_and(|p| p.has_ssh())
+                    || self.pivot_tunnel.as_ref().is_some_and(|p| p.has_ssh()),
             ),
             "pivot.has_password" => Some(
                 self.pivot_remote
                     .as_ref()
                     .is_some_and(|p| p.ssh_password.as_deref().is_some_and(|s| !s.is_empty()))
-                    || self.pivot_tunnel.as_ref().is_some_and(|p| {
-                        p.ssh_password.as_deref().is_some_and(|s| !s.is_empty())
-                    }),
+                    || self
+                        .pivot_tunnel
+                        .as_ref()
+                        .is_some_and(|p| p.ssh_password.as_deref().is_some_and(|s| !s.is_empty())),
             ),
-            "creds.has_domain" => Some(self.profile.as_ref().and_then(|p| p.domain.clone()).is_some()),
+            "creds.has_domain" => Some(
+                self.profile
+                    .as_ref()
+                    .and_then(|p| p.domain.clone())
+                    .is_some(),
+            ),
             "creds.authenticated" => Some(matches!(
                 self.profile.as_ref().map(|p| p.kind),
                 Some(CredKind::Plaintext) | Some(CredKind::Ntlm) | Some(CredKind::Kerberos)
@@ -348,7 +354,11 @@ impl RenderContext {
         None
     }
 
-    fn pivot_tunnel_or_global(&self, key: &str, from_pivot: fn(&Pivot) -> Option<String>) -> Option<String> {
+    fn pivot_tunnel_or_global(
+        &self,
+        key: &str,
+        from_pivot: fn(&Pivot) -> Option<String>,
+    ) -> Option<String> {
         if let Some(p) = self.pivot_tunnel.as_ref() {
             if let Some(v) = from_pivot(p).filter(|s| !s.is_empty()) {
                 return Some(v);
@@ -366,10 +376,7 @@ impl RenderContext {
                 return Some(v);
             }
         }
-        self.globals
-            .get(key)
-            .cloned()
-            .filter(|s| !s.is_empty())
+        self.globals.get(key).cloned().filter(|s| !s.is_empty())
     }
 }
 
@@ -384,9 +391,5 @@ fn slugify_key_name(name: &str) -> String {
             }
         })
         .collect();
-    if s.is_empty() {
-        "pivot".into()
-    } else {
-        s
-    }
+    if s.is_empty() { "pivot".into() } else { s }
 }
